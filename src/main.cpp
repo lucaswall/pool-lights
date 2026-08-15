@@ -11,6 +11,8 @@
 
 #include <Arduino.h>
 
+#include "timing.h"
+
 static const uint32_t BLINK_MS = 500;
 static uint32_t lastToggle = 0;
 static uint32_t tick = 0;
@@ -43,7 +45,7 @@ void setup() {
 
 void loop() {
   const uint32_t now = millis();
-  if (now - lastToggle >= BLINK_MS) {         // unsigned subtraction: rollover-safe
+  if (elapsed(now, lastToggle, BLINK_MS)) {
     lastToggle = now;
     ledOn = !ledOn;
     digitalWrite(LED_BUILTIN, ledOn ? LOW : HIGH);   // LOW = on
