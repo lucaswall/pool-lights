@@ -5,10 +5,13 @@
 (platformio-core#5113), leaving an orphan holding the port. This reads for a fixed time
 and always closes.
 
-    tools/serial_log.py                 8 s at 115200, resetting first
+    tools/serial_log.py                 8 s at 115200
     tools/serial_log.py -s 20 -o        20 s, also written to logs/
     tools/serial_log.py --boot          74880, the ESP8266 boot ROM banner
-    tools/serial_log.py --no-reset      observe a running board undisturbed
+
+Reading serial always restarts the board: macOS asserts DTR/RTS when the port is opened,
+before any userspace setting applies, and clearing HUPCL does not prevent it. So there is
+no way to observe a running board undisturbed over USB, and uptime always starts at zero.
 """
 
 import argparse
@@ -70,7 +73,6 @@ def main():
     ap.add_argument("-t", "--timestamp", action="store_true")
     ap.add_argument("-o", "--out", nargs="?", const="", metavar="FILE",
                     help="also write to FILE, or a timestamped file under logs/")
-    ap.add_argument("--no-reset", dest="reset", action="store_false")
     args = ap.parse_args()
 
     serial = import_serial()
@@ -89,20 +91,18 @@ def main():
 
     print(f"# {port} @ {baud}", file=sys.stderr)
 
-    # Open with the handshake lines low so opening the port does not itself bounce the
-    # board; the reset below is then deliberate.
     ser = serial.Serial()
     ser.port, ser.baudrate, ser.timeout = port, baud, 0.2
     ser.dtr = False
     ser.rts = False
     ser.open()
 
-    if args.reset:
-        # RTS drives EN, DTR drives GPIO0. DTR stays low so the chip boots to flash
-        # rather than into the serial bootloader.
-        ser.rts = True
-        time.sleep(0.15)
-        ser.rts = False
+    # Opening already reset the board, but at an uncontrolled moment. Pulse EN again so
+    # the banner lands after we are reading rather than during open. RTS drives EN, DTR
+    # drives GPIO0; DTR stays low so the chip boots to flash, not the serial bootloader.
+    ser.rts = True
+    time.sleep(0.15)
+    ser.rts = False
 
     start = time.time()
     deadline = start + args.seconds
