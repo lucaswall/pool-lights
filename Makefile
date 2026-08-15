@@ -13,7 +13,7 @@ SECONDS ?= 8
 PIOFLAGS := $(if $(PORT),--upload-port $(PORT),)
 
 .PHONY: help build test upload flash clean distclean erase compiledb ports log bootlog \
-        run check hooks size
+        run check hooks size ota
 
 help:  ## Show this help
 	@echo "pool-lights — make targets"
@@ -40,6 +40,13 @@ upload: ## Compile and flash over USB
 	pio run -t upload $(PIOFLAGS)
 
 flash: upload  ## Alias for upload
+
+ota:    ## Flash over WiFi: make ota OTA_HOST=<hostname-or-ip>
+	@test -n "$(OTA_HOST)" || { echo "error: set OTA_HOST=<hostname-or-ip>"; exit 1; }
+	@test -f include/secrets.h || { echo "error: include/secrets.h missing"; exit 1; }
+	OTA_HOST="$(OTA_HOST)" \
+	OTA_PASSWORD="$$(sed -n 's/^#define OTA_PASSWORD[[:space:]]*"\(.*\)".*/\1/p' include/secrets.h)" \
+	pio run -e d1-ota -t upload
 
 run: upload  ## Flash, then capture the boot banner — the usual edit/verify loop
 	@$(MAKE) --no-print-directory log

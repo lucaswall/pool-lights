@@ -10,8 +10,8 @@ emulates it — leaving the physical remote working exactly as before.
 
 ## Status
 
-Rung 1 of 7. This repository currently contains a blink-and-serial sketch whose only job
-is to prove the toolchain. Everything else is documented and not yet built. See
+Rung 4 of 7. The board blinks, prints a banner, joins WiFi and accepts OTA updates. The
+radio and the MiLight protocol are documented and not yet built. See
 [`docs/roadmap.md`](docs/roadmap.md) for the ladder and [`docs/plan.md`](docs/plan.md) for
 the phase plan with exit criteria.
 
@@ -39,6 +39,16 @@ make ports               # expect /dev/cu.usbserial-* (VID:PID 1A86:7523)
 make test                # desktop unit tests, no board needed
 make run                 # build, flash, and print the boot banner
 ```
+
+WiFi and OTA need `include/secrets.h` — copy `include/secrets.h.example` and fill it in.
+Once a board is running this firmware it can be reflashed over the air:
+
+```bash
+make ota OTA_HOST=pool-lights-<chipid>.local
+```
+
+The hostname is printed in the boot banner. OTA only works on a board whose *running*
+sketch handles OTA, so one bad flash puts you back on USB.
 
 `make help` lists every target. A correct build prints
 `pinmap : D2=16 D4=4 D8=0 D10=15 LED_BUILTIN=2`; different numbers mean the wrong board

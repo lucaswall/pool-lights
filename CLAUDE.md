@@ -77,6 +77,7 @@ D-numbers for this board.
 | Find the port | `make ports` |
 | Build | `make build` |
 | Flash | `make upload` |
+| Flash over WiFi | `make ota OTA_HOST=<name-or-ip>` |
 | Flash, then read the banner | `make run` |
 | Unit tests (desktop) | `make test` |
 | Read serial (safe from a tool call) | `make log` |
