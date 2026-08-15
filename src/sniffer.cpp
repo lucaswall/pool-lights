@@ -11,7 +11,7 @@
 #include <RF24.h>
 #include <SPI.h>
 
-#include "PL1167Rx.h"
+#include "PL1167.h"
 #include "milight_wire.h"
 #include "timing.h"
 #include "v2rf.h"
@@ -33,7 +33,7 @@ static const uint8_t CHANNELS[] = {8, 39, 70};
 static const uint32_t CHANNEL_DWELL_MS = 2000;
 
 static RF24 rf24(PIN_CE, PIN_CSN);
-static PL1167Rx radio(rf24);
+static PL1167 radio(rf24);
 static uint8_t syncword[MILIGHT_SYNCWORD_LEN];
 static uint32_t packets = 0;
 static uint32_t lastHop = 0;

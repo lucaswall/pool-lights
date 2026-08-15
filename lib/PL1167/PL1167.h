@@ -1,7 +1,6 @@
 #pragma once
 
-// PL1167 receive path emulated on an NRF24L01+. Receive-only by design: with no transmit
-// path in the binary, no stray call can send a pairing command.
+// PL1167 transceiver emulated on an NRF24L01+.
 //
 // Derived from sidoh/esp8266_milight_hub (MIT), itself from henryk/openmili.
 //
@@ -13,9 +12,9 @@
 #include <RF24.h>
 #include <stdint.h>
 
-class PL1167Rx {
+class PL1167 {
  public:
-  explicit PL1167Rx(RF24 &radio) : _radio(radio) {}
+  explicit PL1167(RF24 &radio) : _radio(radio) {}
 
   // syncword must be MILIGHT_SYNCWORD_LEN bytes and outlive this object.
   bool begin(const uint8_t *syncword, uint8_t payloadLength);
@@ -23,6 +22,9 @@ class PL1167Rx {
   // Listens on `channel`. Returns the payload length, or 0 if nothing valid arrived.
   // Payload excludes the leading length byte and the trailing CRC.
   uint8_t receive(uint8_t channel, uint8_t *payload, uint8_t payloadCapacity);
+
+  // Sends one copy. Callers repeat across channels the way a remote does.
+  void transmit(uint8_t channel, const uint8_t *payload, uint8_t payloadLength);
 
  private:
   bool configure();

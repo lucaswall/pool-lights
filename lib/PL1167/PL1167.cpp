@@ -1,10 +1,10 @@
-#include "PL1167Rx.h"
+#include "PL1167.h"
 
 #include <string.h>
 
 #include "milight_wire.h"
 
-bool PL1167Rx::begin(const uint8_t *syncword, uint8_t payloadLength) {
+bool PL1167::begin(const uint8_t *syncword, uint8_t payloadLength) {
   _syncword = syncword;
   // +1 for the length byte the PL1167 puts in front of the payload.
   _payloadLength = (uint8_t)(payloadLength + 1);
@@ -20,7 +20,7 @@ bool PL1167Rx::begin(const uint8_t *syncword, uint8_t payloadLength) {
   return configure();
 }
 
-bool PL1167Rx::configure() {
+bool PL1167::configure() {
   // +2 for the CRC that follows the payload.
   _frameLength = (uint8_t)(_payloadLength + 2);
   if (_frameLength > sizeof(_frame)) {
@@ -28,13 +28,14 @@ bool PL1167Rx::configure() {
   }
 
   _radio.openReadingPipe(1, _syncword);
+  _radio.openWritingPipe(_syncword);
   _radio.setPayloadSize(_frameLength);
   // Channel numbers are quoted relative to 2400 MHz; the NRF24 counts from 2402.
   _radio.setChannel((uint8_t)(2 + _channel));
   return true;
 }
 
-uint8_t PL1167Rx::receive(uint8_t channel, uint8_t *payload, uint8_t payloadCapacity) {
+uint8_t PL1167::receive(uint8_t channel, uint8_t *payload, uint8_t payloadCapacity) {
   if (channel != _channel) {
     _channel = channel;
     if (!configure()) {
@@ -65,7 +66,7 @@ uint8_t PL1167Rx::receive(uint8_t channel, uint8_t *payload, uint8_t payloadCapa
   return payloadLength;
 }
 
-uint8_t PL1167Rx::readFrame() {
+uint8_t PL1167::readFrame() {
   uint8_t raw[sizeof(_frame)];
   _radio.read(raw, _frameLength);
 
@@ -86,4 +87,30 @@ uint8_t PL1167Rx::readFrame() {
   const uint16_t received = (uint16_t)((_frame[bodyLength + 1] << 8) | _frame[bodyLength]);
 
   return expected == received ? bodyLength : 0;
+}
+
+void PL1167::transmit(uint8_t channel, const uint8_t *payload, uint8_t payloadLength) {
+  if (channel != _channel) {
+    _channel = channel;
+    if (!configure()) {
+      return;
+    }
+  }
+
+  // The PL1167 length byte precedes the payload and is covered by the CRC.
+  uint8_t frame[sizeof(_frame)];
+  frame[0] = payloadLength;
+  memcpy(frame + 1, payload, payloadLength);
+  const uint8_t bodyLength = (uint8_t)(payloadLength + 1);
+  const uint16_t crc = milightCrc(frame, bodyLength);
+
+  uint8_t out[sizeof(_frame)];
+  for (uint8_t i = 0; i < bodyLength; i++) {
+    out[i] = reverseBits(frame[i]);
+  }
+  out[bodyLength] = reverseBits((uint8_t)(crc & 0xFF));
+  out[bodyLength + 1] = reverseBits((uint8_t)(crc >> 8));
+
+  _radio.stopListening();
+  _radio.write(out, (uint8_t)(bodyLength + 2));
 }

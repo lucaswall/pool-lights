@@ -84,6 +84,40 @@ inline void v2Encode(uint8_t *packet) {
   packet[V2_CHECKSUM] = v2EncodeByte(sum, 2, key, v2Offset(8, packet[V2_KEY], 0));
 }
 
+// FUT088 commands. See docs/milight-notes.md for the full map.
+#define V2_CMD_ON_OFF 0x01
+#define V2_CMD_COLOR 0x02
+#define V2_CMD_BRIGHTNESS 0x05
+#define V2_CMD_MODE 0x06
+#define V2_CMD_SAT_KELVIN 0x07
+#define V2_ARG_WHITE_MODE 0x14
+
+// Bit 7 marks a held key; the argument still says which one.
+#define V2_HELD 0x80
+
+inline uint8_t v2BaseCommand(uint8_t command) { return command & 0x7F; }
+inline bool v2IsHeld(uint8_t command) { return (command & V2_HELD) != 0; }
+
+// numGroups is 8 for this family, so OFF is the group plus nine.
+inline uint8_t v2OnArg(uint8_t group) { return group; }
+inline uint8_t v2OffArg(uint8_t group) { return (uint8_t)(group + 9); }
+
+// Builds an encoded, ready-to-send packet. Key 0x00: the remotes vary it, but the
+// receiver derives everything from it, so a constant is fine and keeps this reproducible.
+inline void v2Build(uint8_t *packet, uint16_t deviceId, uint8_t group, uint8_t command,
+                    uint8_t arg, uint8_t sequence) {
+  packet[V2_KEY] = 0x00;
+  packet[V2_PROTOCOL] = V2_PROTOCOL_FUT089;
+  packet[V2_ID_HIGH] = (uint8_t)(deviceId >> 8);
+  packet[V2_ID_LOW] = (uint8_t)(deviceId & 0xFF);
+  packet[V2_COMMAND] = command;
+  packet[V2_ARGUMENT] = arg;
+  packet[V2_SEQUENCE] = sequence;
+  packet[V2_GROUP] = group;
+  packet[V2_CHECKSUM] = 0;
+  v2Encode(packet);
+}
+
 inline uint16_t v2DeviceId(const uint8_t *decoded) {
   return (uint16_t)((decoded[V2_ID_HIGH] << 8) | decoded[V2_ID_LOW]);
 }

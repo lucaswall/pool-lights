@@ -13,7 +13,7 @@ SECONDS ?= 8
 PIOFLAGS := $(if $(PORT),--upload-port $(PORT),)
 
 .PHONY: help build test upload clean compiledb ports log bootlog run check \
-        ota radio sniff
+        ota radio sniff tx
 
 help:  ## Show this help
 	@echo "pool-lights — make targets"
@@ -37,6 +37,10 @@ upload: ## Compile and flash over USB
 		     echo "stop it first — PlatformIO will not, and the upload will fail with Errno 35"; \
 		     exit 1; } || true
 	pio run -t upload $(PIOFLAGS)
+
+tx:     ## Flash the transmit test: waits 45s, then runs the sequence on a loop
+	pio run -e d1-tx -t upload $(PIOFLAGS)
+	@echo "flashed — 45s until the first command. Go and watch the light."
 
 sniff:  ## Flash the receive-only sniffer and listen (SECONDS to lengthen)
 	pio run -e d1-sniff -t upload $(PIOFLAGS)
