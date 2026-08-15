@@ -29,7 +29,8 @@ static const uint8_t CHANNELS[] = {8, 39, 70};
 static const uint8_t REPEATS = 10;
 
 // Time to walk to the pool before anything happens.
-static const uint32_t STARTUP_DELAY_MS = 45000;
+// Enough to plug into a power bank at the light and step back.
+static const uint32_t STARTUP_DELAY_MS = 20000;
 
 static RF24 rf24(PIN_CE, PIN_CSN);
 static PL1167 radio(rf24);
@@ -62,13 +63,19 @@ static void send(const Step &step) {
   // One sequence number per press, held across the repeats, as the remote does.
   v2Build(packet, MILIGHT_DEVICE_ID, MILIGHT_GROUP, step.command, step.arg, sequence++);
 
+  uint16_t sent = 0, failed = 0;
   for (uint8_t r = 0; r < REPEATS; r++) {
     for (uint8_t c = 0; c < sizeof(CHANNELS) / sizeof(CHANNELS[0]); c++) {
-      radio.transmit(CHANNELS[c], packet, V2_PACKET_LEN);
+      if (radio.transmit(CHANNELS[c], packet, V2_PACKET_LEN)) {
+        sent++;
+      } else {
+        failed++;
+      }
     }
     yield();
   }
-  Serial.printf("sent %-16s cmd 0x%02X arg 0x%02X\n", step.label, step.command, step.arg);
+  Serial.printf("sent %-16s cmd 0x%02X arg 0x%02X  radio ok %u, failed %u\n",
+                step.label, step.command, step.arg, sent, failed);
 }
 
 void setup() {

@@ -16,6 +16,7 @@ bool PL1167::begin(const uint8_t *syncword, uint8_t payloadLength) {
   _radio.setDataRate(RF24_1MBPS);
   _radio.disableCRC();            // the PL1167 CRC is a different polynomial, done in software
   _radio.setAddressWidth(MILIGHT_SYNCWORD_LEN);
+  _radio.setPALevel(RF24_PA_MAX);  // PA+LNA module: anything less wastes the external amp
 
   return configure();
 }
@@ -89,11 +90,11 @@ uint8_t PL1167::readFrame() {
   return expected == received ? bodyLength : 0;
 }
 
-void PL1167::transmit(uint8_t channel, const uint8_t *payload, uint8_t payloadLength) {
+bool PL1167::transmit(uint8_t channel, const uint8_t *payload, uint8_t payloadLength) {
   if (channel != _channel) {
     _channel = channel;
     if (!configure()) {
-      return;
+      return false;
     }
   }
 
@@ -112,5 +113,5 @@ void PL1167::transmit(uint8_t channel, const uint8_t *payload, uint8_t payloadLe
   out[bodyLength + 1] = reverseBits((uint8_t)(crc >> 8));
 
   _radio.stopListening();
-  _radio.write(out, (uint8_t)(bodyLength + 2));
+  return _radio.write(out, (uint8_t)(bodyLength + 2));
 }

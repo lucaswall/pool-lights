@@ -24,7 +24,8 @@ class PL1167 {
   uint8_t receive(uint8_t channel, uint8_t *payload, uint8_t payloadCapacity);
 
   // Sends one copy. Callers repeat across channels the way a remote does.
-  void transmit(uint8_t channel, const uint8_t *payload, uint8_t payloadLength);
+  // False means the radio itself reported the transmission failed.
+  bool transmit(uint8_t channel, const uint8_t *payload, uint8_t payloadLength);
 
  private:
   bool configure();
