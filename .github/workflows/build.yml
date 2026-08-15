@@ -1,0 +1,21 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --upgrade platformio
+      # The point of CI: build the repo exactly as cloned, with no secrets.h and no warm
+      # ~/.platformio. Anything that only compiles on the author's machine fails here.
+      - name: Provide placeholder secrets
+        run: |
+          if [ -f include/secrets.h.example ] && [ ! -f include/secrets.h ]; then
+            cp include/secrets.h.example include/secrets.h
+          fi
+      - run: pio run
