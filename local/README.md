@@ -37,3 +37,21 @@ Rules of thumb:
 - If a value came from a datasheet or an upstream project, it can be committed.
 - If it came from *your* house, it belongs here.
 - Never `git add -f` anything under `local/`.
+
+## Bringing private context to agents
+
+If you keep operational knowledge somewhere outside this repo — a personal wiki, notes, or
+an agent workspace on your own machine — it can be made available to Claude Code without
+ever reaching GitHub. The pattern this project uses:
+
+1. **`CLAUDE.local.md`** at the repo root. Claude Code loads it automatically alongside
+   `CLAUDE.md`, and it is gitignored. `CLAUDE.md` is the public half of the instructions,
+   `CLAUDE.local.md` the private half. Put the pointers and the operational detail there.
+2. **A mirror under `local/`** for anything worth reading offline, kept refreshed by a
+   sync script that also lives under `local/` — so the script, not a tracked file, is what
+   knows your host names.
+3. **Read locally, execute remotely.** Mirror documentation, not credentials or scripts
+   that depend on another machine's tokens and network position.
+
+Nothing about this arrangement is committed except this description, which is deliberately
+generic. A public reader learns the pattern and none of the contents.

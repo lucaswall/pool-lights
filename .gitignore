@@ -21,6 +21,13 @@ logs/
 # Claude Code — machine-local overrides
 .claude/settings.local.json
 
+# Private agent context. CLAUDE.md is the public half of the project instructions and is
+# bound by RULE 0; CLAUDE.local.md is the private half and carries the infrastructure
+# detail RULE 0 keeps out of the tree. Claude Code loads both automatically, so the split
+# costs nothing at runtime. This entry is what keeps the private half out of GitHub —
+# do not remove it, and never `git add -f` the file.
+CLAUDE.local.md
+
 # Editors
 .vscode/*
 !.vscode/extensions.json
