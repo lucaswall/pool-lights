@@ -13,7 +13,7 @@ SECONDS ?= 8
 PIOFLAGS := $(if $(PORT),--upload-port $(PORT),)
 
 .PHONY: help build test upload flash clean distclean erase compiledb ports log bootlog \
-        run check hooks size ota
+        run check hooks size ota radio
 
 help:  ## Show this help
 	@echo "pool-lights — make targets"
@@ -40,6 +40,10 @@ upload: ## Compile and flash over USB
 	pio run -t upload $(PIOFLAGS)
 
 flash: upload  ## Alias for upload
+
+radio:  ## Flash the standalone radio self-test and read its result
+	pio run -e d1-radio -t upload $(PIOFLAGS)
+	tools/serial_log.py $(if $(PORT),--port $(PORT),) --seconds 6
 
 ota:    ## Flash over WiFi: make ota OTA_HOST=<hostname-or-ip>
 	@test -n "$(OTA_HOST)" || { echo "error: set OTA_HOST=<hostname-or-ip>"; exit 1; }

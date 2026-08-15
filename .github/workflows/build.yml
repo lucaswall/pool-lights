@@ -18,7 +18,8 @@ jobs:
           if [ -f include/secrets.h.example ] && [ ! -f include/secrets.h ]; then
             cp include/secrets.h.example include/secrets.h
           fi
-      - run: pio run
+      # Both envs: the self-test is not built by the default env, and would otherwise rot.
+      - run: pio run -e d1 -e d1-radio
       - run: pio test -e native
       - name: RULE 0 — no site-specific values in tracked files
         run: tools/check_secrets.sh

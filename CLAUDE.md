@@ -80,6 +80,7 @@ D-numbers for this board.
 | Flash over WiFi | `make ota OTA_HOST=<name-or-ip>` |
 | Flash, then read the banner | `make run` |
 | Unit tests (desktop) | `make test` |
+| Radio self-test on hardware | `make radio` |
 | Read serial (safe from a tool call) | `make log` |
 | Read the boot ROM at 74880 | `make bootlog` |
 | RULE 0 scan before committing | `make check` |

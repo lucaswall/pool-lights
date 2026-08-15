@@ -10,8 +10,9 @@ emulates it — leaving the physical remote working exactly as before.
 
 ## Status
 
-Rung 4 of 7. The board blinks, prints a banner, joins WiFi and accepts OTA updates. The
-radio and the MiLight protocol are documented and not yet built. See
+Rung 6 of 7. The board blinks, prints a banner, joins WiFi, accepts OTA updates, and its
+radio passes a standalone self-test. The MiLight protocol itself is documented and not yet
+built. See
 [`docs/roadmap.md`](docs/roadmap.md) for the ladder and [`docs/plan.md`](docs/plan.md) for
 the phase plan with exit criteria.
 
@@ -59,6 +60,7 @@ variant was compiled.
 ```
 platformio.ini      two envs: d1 (hardware) and native (tests)
 src/main.cpp        current rung — pins and peripherals
+src/radio_selftest.cpp  standalone radio check (make radio)
 include/            header-only pure logic, unit tested
 test/               desktop unit tests (pio test -e native)
 tools/              serial capture, privacy scan, git hook
