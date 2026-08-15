@@ -90,4 +90,8 @@ on this hardware, plus whatever local patches turn out to be necessary.
 
 ## Licence
 
-Not yet chosen — will be settled before the repository is made public.
+MIT — see [`LICENSE`](LICENSE). Same as the upstream firmware this project exists to run.
+
+Note for anyone redistributing a *built* binary: the RF24 library is GPL-2.0, so the
+combined firmware image carries GPL-2.0 obligations even though this source is MIT.
+Distributing the source alone does not.
