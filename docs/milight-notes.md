@@ -75,18 +75,41 @@ against upstream's `FUT089PacketFormatter`. Decoded V2 packet layout is:
 | Brightness bar | `0x05` | `0`–`100` decimal | **percentage, not 0–255** |
 | M (mode) | `0x06` | `0x00`–`0x04` | five modes |
 | Saturation / kelvin bar | `0x07` | `0`–`100` decimal | saturation in colour mode, kelvin in white mode |
-| Night mode | `0x01｜0x80` | `groupId + 9` | the high bit means "held" |
 
-Two things that will bite an implementer:
+### Held buttons set bit 7 of the command
+
+A long press does not use a separate command. It re-sends the same command with the top
+bit set, so `0x01` becomes `0x81` and the argument still says which key was held. All four
+confirmed by capture:
+
+| Held key | Cmd | Arg | Effect |
+|---|---|---|---|
+| OFF | `0x81` | `0x0A` | night mode — dim nightlight glow, below the normal minimum |
+| S− | `0x81` | `0x13` | 60 s sleep timer |
+| S+ | `0x81` | `0x12` | 10 min sleep timer |
+| ON | `0x81` | `0x01` | encoding confirmed, effect not identified |
+
+**Upstream mis-decodes three of these.** `FUT089PacketFormatter::parsePacket` tests the
+high bit before the argument, so *every* `0x81` packet is reported as night mode:
+
+```cpp
+if (command == FUT089_ON) {
+  if ((packet[V2_COMMAND_INDEX] & 0x80) == 0x80) {
+    result[COMMAND] = NIGHT_MODE;      // both timers and held-ON land here too
+```
+
+A decoder that wants the timers has to check the argument first.
+
+Three things that will bite an implementer:
 
 - **Brightness and saturation are 0–100, not 0–255.** Only hue uses the full byte.
 - **The group byte at [7] is not reliable.** Upstream extracts the group from the
   *argument* of an ON/OFF command instead, and only trusts `[7]` otherwise.
+- **Bit 7 of the command is the held flag**, so mask with `0x7F` before comparing.
 
-Not observed in that capture, so unverified: night mode (needs a held OFF), the 60 s /
-10 min timer printed on the S−/S+ keys, and commands `0x03`/`0x04` — the FUT092-style
-separate kelvin and saturation. This remote uses the combined `0x07` instead, which
-suggests the 1.13.1-beta2 pin above may not have been necessary after all.
+Still unobserved: commands `0x03`/`0x04`, the FUT092-style separate kelvin and saturation.
+This remote uses the combined `0x07` instead, which suggests the 1.13.1-beta2 pin above
+may not have been necessary after all.
 
 ## Sniffing, and its caveats
 
