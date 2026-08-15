@@ -13,7 +13,6 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(git pull *)",
-      "Bash(git tag *)",
       "Bash(gh repo *)",
       "Bash(gh pr *)",
       "Bash(gh issue *)",
