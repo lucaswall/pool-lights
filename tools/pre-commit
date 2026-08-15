@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# RULE 0 pre-commit tripwire. Install with `make hooks` — git hooks are not themselves
+# versioned, so this lives in tools/ and is copied into .git/hooks/ on each clone.
+#
+# Bypass with `git commit --no-verify` when a hit is a false positive. If you find
+# yourself bypassing routinely, fix the pattern in tools/check_secrets.sh instead.
+
+exec "$(git rev-parse --show-toplevel)/tools/check_secrets.sh" --staged
