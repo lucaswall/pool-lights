@@ -19,3 +19,6 @@ jobs:
             cp include/secrets.h.example include/secrets.h
           fi
       - run: pio run
+      - run: pio test -e native
+      - name: RULE 0 — no site-specific values in tracked files
+        run: tools/check_secrets.sh

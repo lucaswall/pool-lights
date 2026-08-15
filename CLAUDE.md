@@ -70,15 +70,21 @@ D-numbers for this board.
 
 ## Commands
 
+`make help` lists everything. The common ones:
+
 | Task | Command |
 |---|---|
-| Find the port | `pio device list` (expect `/dev/cu.usbserial-*`; never `/dev/tty.*`) |
-| Build | `pio run` |
-| Flash | `pio run -t upload` |
-| Clean | `pio run -t clean` |
-| Erase flash | `pio run -t erase` |
-| Symbol index for clangd | `pio run -t compiledb` |
-| Serial monitor (human, own terminal) | `pio device monitor` |
+| Find the port | `make ports` |
+| Build | `make build` |
+| Flash | `make upload` |
+| Flash, then read the banner | `make run` |
+| Unit tests (desktop) | `make test` |
+| Read serial (safe from a tool call) | `make log` |
+| Read the boot ROM at 74880 | `make bootlog` |
+| RULE 0 scan before committing | `make check` |
+| Install the pre-commit scan | `make hooks` |
+| Symbol index for clangd | `make compiledb` |
+| Serial monitor (human, own terminal only) | `pio device monitor` |
 
 ## The serial port is a single-holder resource
 
@@ -93,7 +99,8 @@ It dies with `termios.error: (25, 'Inappropriate ioctl for device')` whenever st
 a TTY, which is always true for an agent Bash call (platformio-core#5113, open). A
 foreground call that times out gets backgrounded rather than killed, leaving an orphan
 holding the port. `.claude/settings.json` denies it. Do not pass `-t monitor` to `pio run`
-either. From the SPI rung onward, use `tools/serial_log.py`.
+either. Use `make log` (`tools/serial_log.py`), which reads for a bounded time and always
+closes the port.
 
 ## Three different baud rates
 
@@ -122,7 +129,18 @@ milight-hub documents it causing stack smashing and watchdog resets.
 
 ## Conventions
 
-- Comments explain **why**, not what. Pin choices and timing constants always get a reason.
-- One rung at a time: get it verified and committed before starting the next.
-- Tag each completed rung (`step-01-blink`, `step-02-serial`, …) so a regression can be
-  bisected against working hardware.
+**`docs/code-standards.md` is binding on every change.** Read it before writing code.
+The rules that get broken most often:
+
+- **Minimal.** Smallest thing that works. No abstraction or option for a use case that
+  does not exist yet. Comments explain **why**, not what.
+- **No dead things.** No commented-out code, no unused files, headers, targets or
+  instructions. Delete them in the same commit that makes them dead — a future agent
+  cannot distinguish a deliberate leftover from an oversight.
+- **Test first** for anything with a definable input and output. Pure logic goes in a
+  header under `include/` and is tested by `make test`; `src/` is hardware and is verified
+  by looking at the board.
+- **Never leave the repo dirty.** Commit and push a finished set of changes before moving
+  on, and decide tracked-or-gitignored for a new file the moment it appears.
+- One rung at a time: verified on hardware, then committed.
+- No git tags. Use the commit log to find a working state.

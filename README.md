@@ -34,24 +34,34 @@ brew install platformio
 git clone git@github.com:lucaswall/pool-lights.git ~/Projects/pool-lights
 cd ~/Projects/pool-lights
 
-pio device list          # expect /dev/cu.usbserial-* (VID:PID 1A86:7523)
-pio run                  # first build downloads the toolchain, ~400 MB, once
-pio run -t upload
-pio device monitor       # 115200; Ctrl-] to exit
+make hooks               # install the pre-commit privacy scan
+make ports               # expect /dev/cu.usbserial-* (VID:PID 1A86:7523)
+make test                # desktop unit tests, no board needed
+make run                 # build, flash, and print the boot banner
 ```
 
-A correct build prints `pinmap : D2=16 D4=4 D8=0 D10=15 LED_BUILTIN=2`. Different numbers
-mean the wrong board variant was compiled.
+`make help` lists every target. A correct build prints
+`pinmap : D2=16 D4=4 D8=0 D10=15 LED_BUILTIN=2`; different numbers mean the wrong board
+variant was compiled.
 
 ## Layout
 
 ```
-platformio.ini      one env: d1
-src/main.cpp        current rung
-docs/               plan, roadmap, hardware, protocol notes, HA integration
+platformio.ini      two envs: d1 (hardware) and native (tests)
+src/main.cpp        current rung — pins and peripherals
+include/            header-only pure logic, unit tested
+test/               desktop unit tests (pio test -e native)
+tools/              serial capture, privacy scan, git hook
+docs/               plan, roadmap, hardware, protocol notes, code standards
 local/              gitignored: site-specific values, real IPs, sniffed device IDs
 .claude/            Claude Code project settings
 ```
+
+## Contributing
+
+[`docs/code-standards.md`](docs/code-standards.md) is binding: minimal code, no dead
+things, tests first for anything with a definable input and output, and never leave the
+repository dirty. Run `make check` before committing.
 
 ## A note on privacy
 
