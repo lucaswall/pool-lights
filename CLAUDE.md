@@ -24,7 +24,9 @@ docs, and issue text.
   credentials of a real light: anyone within radio range who knows them can drive it
 - Home Assistant instance URLs, long-lived tokens, or entity registries dumped verbatim
 - Photos of the house, floor plans, geolocation, anything identifying the address
-- Personal names, email addresses, phone numbers, purchase/invoice references
+- Personal names, email addresses, phone numbers, purchase/invoice references —
+  **except the copyright line in `LICENSE`**, which names the author deliberately. Do not
+  "clean" it; a licence needs an identifiable holder to mean anything.
 
 **Where site-specific values go instead:** `local/` — the whole directory is gitignored
 except its README. Put real IPs, credentials, sniffed device IDs and personal notes in
