@@ -16,7 +16,6 @@ bool PL1167::begin(const uint8_t *syncword, uint8_t payloadLength) {
   _radio.setDataRate(RF24_1MBPS);
   _radio.disableCRC();            // the PL1167 CRC is a different polynomial, done in software
   _radio.setAddressWidth(MILIGHT_SYNCWORD_LEN);
-  _radio.setPALevel(RF24_PA_MAX);  // PA+LNA module: anything less wastes the external amp
 
   return configure();
 }

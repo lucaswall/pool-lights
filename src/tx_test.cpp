@@ -1,7 +1,7 @@
 // Rung 7b — transmit test, built by `make tx`.
 //
-// Runs a fixed sequence on a timer so the light can be watched from the pool rather than
-// the keyboard. The sequence loops, so a missed step comes round again.
+// Cycles red, green, blue on a 3 s loop so the light can be watched rather than the
+// keyboard. Loops forever.
 //
 // Never sends to group 0: repeated ON to group 0 is the pairing command, and a mis-sent
 // pair can displace the remote the receiver is bound to.
@@ -24,13 +24,13 @@ static const uint8_t PREAMBLE = 0xAA;
 static const uint8_t TRAILER = 0x05;
 static const uint8_t CHANNELS[] = {8, 39, 70};
 
-// A real remote repeats each press many times across all three channels. One copy is
-// unlikely to land.
-static const uint8_t REPEATS = 10;
+// Upstream sends 50 repeats spread over several loop iterations rather than one burst,
+// so the receiver gets gaps to sample in. Match that.
+static const uint8_t REPEATS = 50;
+static const uint8_t REPEATS_PER_BURST = 10;
 
 // Time to walk to the pool before anything happens.
-// Enough to plug into a power bank at the light and step back.
-static const uint32_t STARTUP_DELAY_MS = 20000;
+static const uint32_t STARTUP_DELAY_MS = 5000;
 
 static RF24 rf24(PIN_CE, PIN_CSN);
 static PL1167 radio(rf24);
@@ -45,17 +45,9 @@ struct Step {
 };
 
 static const Step SEQUENCE[] = {
-  {"ON",             V2_CMD_ON_OFF,     v2OnArg(MILIGHT_GROUP),  6000},
-  {"OFF",            V2_CMD_ON_OFF,     v2OffArg(MILIGHT_GROUP), 6000},
-  {"ON again",       V2_CMD_ON_OFF,     v2OnArg(MILIGHT_GROUP),  4000},
-  {"RED",            V2_CMD_COLOR,      0x00,                    5000},
-  {"GREEN",          V2_CMD_COLOR,      0x55,                    5000},
-  {"BLUE",           V2_CMD_COLOR,      0xAB,                    5000},
-  {"WHITE mode",     V2_CMD_ON_OFF,     V2_ARG_WHITE_MODE,       5000},
-  {"brightness 100", V2_CMD_BRIGHTNESS, 100,                     4000},
-  {"brightness 10",  V2_CMD_BRIGHTNESS, 10,                      4000},
-  {"brightness 100", V2_CMD_BRIGHTNESS, 100,                     4000},
-  {"OFF (end)",      V2_CMD_ON_OFF,     v2OffArg(MILIGHT_GROUP), 8000},
+  {"RED",   V2_CMD_COLOR, 0x00, 3000},
+  {"GREEN", V2_CMD_COLOR, 0x55, 3000},
+  {"BLUE",  V2_CMD_COLOR, 0xAB, 3000},
 };
 
 static void send(const Step &step) {
@@ -71,6 +63,9 @@ static void send(const Step &step) {
       } else {
         failed++;
       }
+    }
+    if ((r + 1) % REPEATS_PER_BURST == 0) {
+      delay(2);
     }
     yield();
   }
