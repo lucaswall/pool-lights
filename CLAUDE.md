@@ -85,8 +85,7 @@ D-numbers for this board.
 | Radio self-test on hardware | `make radio` |
 | Read serial (safe from a tool call) | `make log` |
 | Read the boot ROM at 74880 | `make bootlog` |
-| RULE 0 scan before committing | `make check` |
-| Install the pre-commit scan | `make hooks` |
+| RULE 0 scan (always before publishing) | `make check` |
 | Symbol index for clangd | `make compiledb` |
 | Serial monitor (human, own terminal only) | `pio device monitor` |
 

@@ -35,7 +35,6 @@ brew install platformio
 git clone git@github.com:lucaswall/pool-lights.git ~/Projects/pool-lights
 cd ~/Projects/pool-lights
 
-make hooks               # install the pre-commit privacy scan
 make ports               # expect /dev/cu.usbserial-* (VID:PID 1A86:7523)
 make test                # desktop unit tests, no board needed
 make run                 # build, flash, and print the boot banner
@@ -59,11 +58,11 @@ variant was compiled.
 
 ```
 platformio.ini      two envs: d1 (hardware) and native (tests)
-src/main.cpp        current rung — pins and peripherals
-src/radio_selftest.cpp  standalone radio check (make radio)
+src/                firmware, radio self-test, sniffer — one env each
+lib/PL1167/         PL1167 receive path on the NRF24
 include/            header-only pure logic, unit tested
 test/               desktop unit tests (pio test -e native)
-tools/              serial capture, privacy scan, git hook
+tools/              serial capture, privacy scan
 docs/               plan, roadmap, hardware, protocol notes, code standards
 local/              gitignored: site-specific values, real IPs, sniffed device IDs
 .claude/            Claude Code project settings
@@ -73,7 +72,7 @@ local/              gitignored: site-specific values, real IPs, sniffed device I
 
 [`docs/code-standards.md`](docs/code-standards.md) is binding: minimal code, no dead
 things, tests first for anything with a definable input and output, and never leave the
-repository dirty. Run `make check` before committing.
+repository dirty. Run `make check` before publishing anything.
 
 ## A note on privacy
 

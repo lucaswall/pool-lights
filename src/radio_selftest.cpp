@@ -1,11 +1,8 @@
-// Rung 6 — standalone radio self-test. Built by `make radio`, not by the normal firmware.
+// Rung 6 — standalone radio self-test, built by `make radio`.
 //
-// It exists because the upstream milight firmware discards RF24::begin()'s return value
-// and never calls isChipConnected(): an unwired radio still boots, joins WiFi and serves
-// its web UI looking healthy, so a wiring fault gets diagnosed as a protocol problem days
-// later. Prove the radio separately, once.
-//
-// Every failure this reports is wiring or power. None of them are software.
+// Upstream's firmware discards begin()'s return and never calls isChipConnected(), so an
+// unwired radio looks healthy on WiFi and MQTT and the wiring fault surfaces days later
+// as a protocol mystery. Every failure reported here is wiring or power, never software.
 
 #include <Arduino.h>
 #include <RF24.h>
@@ -13,9 +10,8 @@
 
 #include "radiodiag.h"
 
-// CE is a plain strobe outside SPI, so no register test can detect it miswired — check it
-// by eye. CSN is on GPIO5 rather than the usual GPIO15, which is a boot strap pin: CSN
-// idles high and would stop the board booting at all.
+// CE miswiring is undetectable by any register test — check it by eye. CSN avoids the
+// usual GPIO15: it idles high, and GPIO15 high at reset stops the board booting.
 static const uint8_t PIN_CE = 4;
 static const uint8_t PIN_CSN = 5;
 
@@ -23,8 +19,7 @@ static const uint8_t PIN_CSN = 5;
 // tells us "marginal wiring" rather than "no radio".
 static const uint32_t SPI_HZ[] = {10000000, 4000000};
 
-// Arbitrary but distinctive: 0x4c is not 0x00 or 0xff, so a stuck or floating bus cannot
-// imitate a successful readback. Channel is 7 bits, so the top bit reads back clear.
+// Neither 0x00 nor 0xff, so a stuck or floating bus cannot imitate a pass.
 static const uint8_t TEST_CHANNEL = 0x4c;
 
 static bool probe(uint32_t hz) {
@@ -47,8 +42,7 @@ static bool probe(uint32_t hz) {
     return false;
   }
 
-  // Only meaningful once the bus is proven; a fake or non-plus part cannot do the
-  // 250 kbps rate the MiLight protocol needs.
+  // Only meaningful once the bus is proven: a non-plus part cannot do 250 kbps.
   const bool plus = radio.isPVariant();
   Serial.printf("isPVariant()     : %s%s\n", plus ? "true" : "false",
                 plus ? "" : "  <-- not a genuine NRF24L01+");

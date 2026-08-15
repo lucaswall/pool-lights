@@ -12,8 +12,8 @@ PORT ?=                                   # override: make upload PORT=/dev/cu.u
 SECONDS ?= 8
 PIOFLAGS := $(if $(PORT),--upload-port $(PORT),)
 
-.PHONY: help build test upload flash clean distclean erase compiledb ports log bootlog \
-        run check hooks size ota radio
+.PHONY: help build test upload clean compiledb ports log bootlog run check \
+        ota radio sniff
 
 help:  ## Show this help
 	@echo "pool-lights — make targets"
@@ -24,7 +24,6 @@ help:  ## Show this help
 		| expand -t 14
 	@echo
 	@echo "Variables:  PORT=/dev/cu.usbserial-N   SECONDS=<n>"
-	@echo "Never run 'pio device monitor' from a script or an agent — use 'make log'."
 
 build:  ## Compile the firmware
 	pio run
@@ -39,7 +38,9 @@ upload: ## Compile and flash over USB
 		     exit 1; } || true
 	pio run -t upload $(PIOFLAGS)
 
-flash: upload  ## Alias for upload
+sniff:  ## Flash the receive-only sniffer and listen (SECONDS to lengthen)
+	pio run -e d1-sniff -t upload $(PIOFLAGS)
+	tools/serial_log.py $(if $(PORT),--port $(PORT),) --seconds $(SECONDS) --out
 
 radio:  ## Flash the standalone radio self-test and read its result
 	pio run -e d1-radio -t upload $(PIOFLAGS)
@@ -64,24 +65,11 @@ bootlog: ## Capture the 74880-baud boot ROM banner — use when the board will n
 ports:  ## List candidate serial ports
 	pio device list
 
-size:   ## Report flash and RAM use of the current build
-	pio run -t size
-
 compiledb: ## Regenerate compile_commands.json for clangd
 	pio run -t compiledb
-
-erase:  ## Erase the whole flash chip (destroys the WiFi config blob too)
-	pio run -t erase
 
 clean:  ## Remove build artefacts
 	pio run -t clean
 
-distclean: clean  ## Also drop the clangd index and captured logs
-	rm -rf compile_commands.json .pio logs
-
 check:  ## RULE 0 scan: look for site-specific values in tracked files
 	tools/check_secrets.sh
-
-hooks:  ## Install the pre-commit RULE 0 tripwire into .git/hooks
-	@install -m 0755 tools/pre-commit .git/hooks/pre-commit
-	@echo "installed .git/hooks/pre-commit — bypass a false positive with 'git commit --no-verify'"
