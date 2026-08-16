@@ -90,8 +90,31 @@ void WebUi::handleErrors() {
 void WebUi::handleStatus() {
   const LightState &s = _control.state();
   const uint32_t up = millis() / 1000;
+  const char *mode = s.mode() == COLOUR_MODE_RGB ? "rgb" : "white";
 
-  char body[560];
+  char body[640];
+  if (_server.hasArg("json")) {
+    // No escaping: every string here is a build stamp, a hostname, an IP or one of a
+    // fixed set of reset reasons, none of which contain a quote or a backslash.
+    snprintf(body, sizeof(body),
+             "{\"host\":\"%s\",\"build\":\"%s %s\",\"reset\":\"%s\","
+             "\"uptime\":%lu,\"heap\":%u,"
+             "\"wifi\":{\"up\":%s,\"ip\":\"%s\",\"rssi\":%d},"
+             "\"light\":{\"on\":%s,\"night\":%s,\"brightness\":%u,\"mode\":\"%s\","
+             "\"hue\":%u,\"saturation\":%u,\"kelvin\":%u,\"effect\":%u},"
+             "\"log\":{\"lines\":%u,\"capacity\":%u,\"faults\":%u}}",
+             _hostname, __DATE__, __TIME__, ESP.getResetReason().c_str(),
+             (unsigned long)up, ESP.getFreeHeap(),
+             _net.connected() ? "true" : "false", WiFi.localIP().toString().c_str(),
+             _net.rssi(), s.on() ? "true" : "false", s.night() ? "true" : "false",
+             s.brightness(), mode, s.hue(), s.saturation(), s.kelvin(), s.effect(),
+             logBuffer().count(), LOG_LINES, errorBuffer().count());
+
+    _server.sendHeader("Cache-Control", "no-store");
+    _server.send(200, "application/json", body);
+    return;
+  }
+
   snprintf(body, sizeof(body),
            "host    : %s\n"
            "build   : %s %s\n"
@@ -105,9 +128,9 @@ void WebUi::handleStatus() {
            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60),
            (unsigned long)(up % 60), ESP.getFreeHeap(),
            _net.connected() ? "up" : "down", WiFi.localIP().toString().c_str(), _net.rssi(),
-           s.on() ? "on" : "off", s.night() ? " (night)" : "", s.brightness(),
-           s.mode() == COLOUR_MODE_RGB ? "rgb" : "white", s.hue(), s.saturation(),
-           s.kelvin(), s.effect(), logBuffer().count(), LOG_LINES, errorBuffer().count());
+           s.on() ? "on" : "off", s.night() ? " (night)" : "", s.brightness(), mode,
+           s.hue(), s.saturation(), s.kelvin(), s.effect(),
+           logBuffer().count(), LOG_LINES, errorBuffer().count());
 
   _server.sendHeader("Cache-Control", "no-store");
   _server.send(200, "text/plain", body);

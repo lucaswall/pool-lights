@@ -84,7 +84,7 @@ Everything the board serves, on port 80.
 | `GET /` | The web UI: state, controls, and a live console panel |
 | `GET /api/state` | State as JSON, plus IP, RSSI, uptime and heap. Polled twice a second by the page |
 | `POST /api/set` | Commands. Every parameter is optional and applied if present: `on=1`, `off=1`, `white=1`, `hue=0..255`, `brightness=0..100`, `sat=0..100`, `effect=0..4` |
-| `GET /status` | Plain-text snapshot: build stamp, reset reason, uptime, heap, WiFi, light state, and how full both rings are |
+| `GET /status` | Snapshot: build stamp, reset reason, uptime, heap, WiFi, light state, and how full both rings are. Plain text, or JSON with `?json=1` |
 | `GET /log` | The console ring as plain text, oldest first |
 | `GET /errors` | Faults only, from a separate smaller ring |
 
@@ -93,6 +93,7 @@ changes, so a client can tell a change from a repeat without diffing.
 
 ```bash
 curl http://pool-lights.local/status
+curl "http://pool-lights.local/status?json=1" | jq .
 curl -X POST "http://pool-lights.local/api/set?on=1&hue=85&brightness=60"
 ```
 
