@@ -20,10 +20,10 @@ RF receiver, and with the physical remote still working afterwards.
 
 ## The human parts
 
-This plan cannot be executed end to end by an agent. Two things are physical:
-assembling the board and radio, and looking at the light during verification. The last one is not a gap in the tooling — the protocol is
-one-way, the receiver reports nothing, and no instrumentation on the transmit side can
-prove a command landed.
+This plan cannot be executed end to end by an agent. Two things are physical: assembling
+the board and radio, and looking at the light during verification. The second is not a gap
+in the tooling — the protocol is one-way, the receiver reports nothing, and no
+instrumentation on the transmit side can prove a command landed.
 
 ## Phases
 
