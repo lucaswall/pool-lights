@@ -7,7 +7,12 @@
 // press, so it has to advance per command and stay put across the repeats of one.
 class Encoder {
  public:
-  Encoder(uint16_t deviceId, uint8_t group) : _deviceId(deviceId), _group(group) {}
+  // seed matters: the sequence tells the receiver a repeat from a fresh press, and we
+  // transmit under the same device id as the physical remote. Starting from 0 every boot
+  // makes our first packet after a restart byte-identical to our first packet after any
+  // previous one, which a receiver de-duplicating on sequence would discard.
+  Encoder(uint16_t deviceId, uint8_t group, uint8_t seed = 0)
+      : _deviceId(deviceId), _group(group), _sequence(seed) {}
 
   // out must have room for V2_PACKET_LEN bytes.
   void encode(uint8_t command, uint8_t arg, uint8_t *out) {
@@ -20,5 +25,5 @@ class Encoder {
  private:
   uint16_t _deviceId;
   uint8_t _group;
-  uint8_t _sequence = 0;
+  uint8_t _sequence;
 };

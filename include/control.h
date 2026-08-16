@@ -18,8 +18,8 @@ struct PacketSink {
 // HTTP or Home Assistant, so those can change without touching any of this.
 class Control {
  public:
-  Control(PacketSink &sink, uint16_t deviceId, uint8_t group)
-      : _sink(sink), _encoder(deviceId, group) {}
+  Control(PacketSink &sink, uint16_t deviceId, uint8_t group, uint8_t sequenceSeed = 0)
+      : _sink(sink), _encoder(deviceId, group, sequenceSeed) {}
 
   void turnOn() { issue(V2_CMD_ON_OFF, v2OnArg(_encoder.group())); }
   void turnOff() { issue(V2_CMD_ON_OFF, v2OffArg(_encoder.group())); }

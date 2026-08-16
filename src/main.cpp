@@ -28,7 +28,10 @@ static const uint8_t PIN_CSN = 5;
 static const char HOST[] = "pool-lights";
 static Net net;
 static RadioLink radio(PIN_CE, PIN_CSN);
-static Control control(radio, MILIGHT_DEVICE_ID, MILIGHT_GROUP);
+// Seeded at construction from the clock, so a reboot does not reopen with the same
+// packet the previous boot sent first.
+static Control control(radio, MILIGHT_DEVICE_ID, MILIGHT_GROUP,
+                       (uint8_t)(micros() & 0xFF));
 static WebUi web(control, net, HOST);
 static HaMqtt mqtt(control, HOST);
 static uint32_t reportedVersion = 0;

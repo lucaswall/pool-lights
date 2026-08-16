@@ -1,3 +1,4 @@
+#include <string.h>
 #include <unity.h>
 
 #include "encoder.h"
@@ -53,11 +54,32 @@ static void encoder_advances_the_sequence(void) {
   TEST_ASSERT_EQUAL_UINT8((uint8_t)(first.sequence + 1), second.sequence);
 }
 
+// Two boards, or the same board across a reboot, must not open with an identical packet:
+// the receiver uses the sequence to tell a repeat from a fresh press, and we share the
+// physical remote's device id.
+static void the_sequence_can_be_seeded(void) {
+  Encoder a(0xabcd, 1, 0x00);
+  Encoder b(0xabcd, 1, 0x5c);
+  uint8_t first[V2_PACKET_LEN], second[V2_PACKET_LEN];
+  a.encode(V2_CMD_ON_OFF, v2OnArg(1), first);
+  b.encode(V2_CMD_ON_OFF, v2OnArg(1), second);
+
+  TEST_ASSERT_FALSE(memcmp(first, second, V2_PACKET_LEN) == 0);
+
+  Packet pa, pb;
+  decodePacket(first, &pa);
+  decodePacket(second, &pb);
+  TEST_ASSERT_EQUAL_UINT8(0x00, pa.sequence);
+  TEST_ASSERT_EQUAL_UINT8(0x5c, pb.sequence);
+  TEST_ASSERT_EQUAL_HEX8(pa.command, pb.command);   // same intent, different packet
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(decodes_what_the_encoder_built);
   RUN_TEST(splits_the_held_bit_out);
   RUN_TEST(rejects_other_protocols);
   RUN_TEST(encoder_advances_the_sequence);
+  RUN_TEST(the_sequence_can_be_seeded);
   return UNITY_END();
 }
