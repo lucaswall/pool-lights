@@ -2,6 +2,9 @@
 
 #include <string.h>
 
+// Well over the ~100 us a 12-byte frame needs at 1 Mbps, and far under the watchdog.
+static const uint32_t TX_TIMEOUT_MS = 10;
+
 #include "milight_wire.h"
 
 bool PL1167::begin(const uint8_t *syncword, uint8_t payloadLength) {
@@ -9,16 +12,17 @@ bool PL1167::begin(const uint8_t *syncword, uint8_t payloadLength) {
   // +1 for the length byte the PL1167 puts in front of the payload.
   _payloadLength = (uint8_t)(payloadLength + 1);
 
-  if (!_radio.begin()) {
-    return false;
-  }
+  // Configure unconditionally. RF24::begin() writes the acking, CRC-appending defaults
+  // before the readback that decides its return value, so bailing out early would leave
+  // a marginal chip in a state that rejects every MiLight frame.
+  const bool started = _radio.begin();
   _radio.setAutoAck(false);       // there is no PL1167 peer to acknowledge us
   _radio.setDataRate(RF24_1MBPS);
   _radio.disableCRC();            // the PL1167 CRC is a different polynomial, done in software
   _radio.setAddressWidth(MILIGHT_SYNCWORD_LEN);
   _radio.setPALevel(RF24_PA_MAX);  // PA+LNA module with decoupling fitted
 
-  return configure();
+  return started && configure();
 }
 
 bool PL1167::configure() {
@@ -112,6 +116,11 @@ bool PL1167::transmit(uint8_t channel, const uint8_t *payload, uint8_t payloadLe
   out[bodyLength] = reverseBits((uint8_t)(crc & 0xFF));
   out[bodyLength + 1] = reverseBits((uint8_t)(crc >> 8));
 
+  // Not RF24::write(): with FAILURE_HANDLING compiled in, its error path spins on a
+  // status that never changes and never yields, so a brownout mid-burst takes the board
+  // to a watchdog reset. startFastWrite + a bounded txStandBy cannot hang, and its return
+  // is a real signal — the FIFO only empties when a packet has been clocked out.
   _radio.stopListening();
-  return _radio.write(out, (uint8_t)(bodyLength + 2));
+  _radio.startFastWrite(out, (uint8_t)(bodyLength + 2), false);
+  return _radio.txStandBy(TX_TIMEOUT_MS);
 }

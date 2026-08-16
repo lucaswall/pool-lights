@@ -35,7 +35,8 @@ void Net::begin(const char *hostname, const char *ssid, const char *password,
 
 bool Net::connected() const { return WiFi.status() == WL_CONNECTED; }
 
-int Net::rssi() const { return WiFi.RSSI(); }
+// WiFi.RSSI() returns 31 when unassociated, which would be logged as a positive dBm.
+int Net::rssi() const { return connected() ? WiFi.RSSI() : 0; }
 
 void Net::loop() {
   const bool up = connected();
@@ -63,6 +64,10 @@ void Net::loop() {
       logLine("wifi      : up, ip %s rssi %d", WiFi.localIP().toString().c_str(),
            WiFi.RSSI());
     } else {
+      // Re-arm on the next reconnect: ArduinoOTA.begin() also starts mDNS, and neither
+      // survives an association drop. Without this, a long AP outage leaves a sealed
+      // board unreachable over the air until someone power-cycles it.
+      _otaReady = false;
       logError("wifi      : lost");
     }
   }

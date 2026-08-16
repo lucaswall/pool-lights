@@ -5,6 +5,7 @@
 #include <ESP8266WiFi.h>
 
 #include "log.h"
+#include "timing.h"
 #include "secrets.h"
 #include "units.h"
 
@@ -16,7 +17,17 @@
 #define T_FASTER MQTT_PREFIX "effect/faster"
 #define T_SLOWER MQTT_PREFIX "effect/slower"
 
-static const uint32_t RETRY_MS = 5000;
+// Backed off to a cap: a broker that is simply switched off should not have us blocking
+// on a connect attempt every few seconds. Each attempt costs the socket timeout below,
+// and while it blocks, ArduinoOTA and the radio do not run.
+static const uint32_t RETRY_MIN_MS = 5000;
+static const uint32_t RETRY_MAX_MS = 60000;
+
+// PubSubClient defaults to 15 s and WiFiClient to 5 s. Fifteen seconds without servicing
+// ArduinoOTA is longer than espota waits for an invitation, which on a sealed board means
+// a broker outage could cost the ability to reflash. Two seconds is ample on a LAN.
+static const uint16_t SOCKET_TIMEOUT_S = 2;
+static const uint32_t CLIENT_TIMEOUT_MS = 2000;
 
 void HaMqtt::loop() {
   if (WiFi.status() != WL_CONNECTED) {
@@ -25,13 +36,19 @@ void HaMqtt::loop() {
 
   if (!_mqtt.connected()) {
     const uint32_t now = millis();
-    if (now - _lastAttempt < RETRY_MS) {
+    if (_attempted && !elapsed(now, _lastAttempt, _retryMs)) {
       return;
     }
-    _lastAttempt = now;
-    if (!connect()) {
+    _attempted = true;
+    const bool ok = connect();
+    // Stamped after the attempt, not before: a connect that burns its whole timeout would
+    // otherwise return with the retry window already expired and spin.
+    _lastAttempt = millis();
+    if (!ok) {
+      _retryMs = _retryMs >= RETRY_MAX_MS ? RETRY_MAX_MS : _retryMs * 2;
       return;
     }
+    _retryMs = RETRY_MIN_MS;
   }
 
   _mqtt.loop();
@@ -47,6 +64,8 @@ void HaMqtt::loop() {
 bool HaMqtt::connect() {
   _mqtt.setServer(MQTT_HOST, MQTT_PORT);
   _mqtt.setBufferSize(1024);   // the discovery payload does not fit the 256-byte default
+  _mqtt.setSocketTimeout(SOCKET_TIMEOUT_S);
+  _wifi.setTimeout(CLIENT_TIMEOUT_MS);
   _mqtt.setCallback([this](char *topic, uint8_t *payload, unsigned int length) {
     onMessage(topic, payload, length);
   });
@@ -66,7 +85,6 @@ bool HaMqtt::connect() {
   publishState();
 
   logLine("mqtt      : connected to %s as %s", MQTT_HOST, MQTT_USER);
-  _everConnected = true;
   return true;
 }
 

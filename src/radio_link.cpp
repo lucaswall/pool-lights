@@ -22,6 +22,10 @@ static const uint8_t REPEATS_PER_BURST = 10;
 // Listening on one channel at a time; which one is not knowable in advance, so rotate.
 static const uint32_t CHANNEL_DWELL_MS = 2000;
 
+// Each failed send costs a timeout. A radio that has stopped answering should abandon the
+// burst rather than block the loop for every one of the 150 attempts.
+static const uint16_t ABORT_AFTER_FAILURES = 5;
+
 bool RadioLink::begin() {
   SPI.begin();
   milightSyncword(SYNCWORD_0, SYNCWORD_3, PREAMBLE, TRAILER, _syncword);
@@ -37,8 +41,9 @@ void RadioLink::send(const uint8_t *packet) {
 void RadioLink::loop() {
   if (!_outgoing.empty()) {
     transmitNext();
-    return;
   }
+  // Always, even with commands queued: a client posting in a loop would otherwise keep
+  // the queue non-empty and we would stop hearing the physical remote entirely.
   listen();
 }
 
@@ -60,7 +65,7 @@ void RadioLink::transmitNext() {
   }
 
   uint16_t failed = 0;
-  for (uint8_t r = 0; r < REPEATS; r++) {
+  for (uint8_t r = 0; r < REPEATS && failed < ABORT_AFTER_FAILURES; r++) {
     for (uint8_t c = 0; c < CHANNEL_COUNT; c++) {
       if (!_pl1167.transmit(CHANNELS[c], packet, V2_PACKET_LEN)) {
         failed++;

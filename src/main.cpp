@@ -33,6 +33,12 @@ static WebUi web(control, net, HOST);
 static HaMqtt mqtt(control, HOST);
 static uint32_t reportedVersion = 0;
 
+// A radio that fails to start is not recoverable by hand any more: the board is sealed.
+// Retry it from the loop instead of logging once and running blind forever.
+static const uint32_t RADIO_RETRY_MS = 30000;
+static bool radioReady = false;
+static uint32_t lastRadioTry = 0;
+
 // Reporting heap only on new lows keeps a healthy board quiet while a leak shows up as a
 // steady descent.
 static const uint32_t HEAP_REPORT_STEP = 1024;
@@ -72,8 +78,9 @@ void setup() {
   delay(200);
   banner();
 
-  if (!radio.begin()) {
-    logError("radio     : FAILED to start — run `make radio`");
+  radioReady = radio.begin();
+  if (!radioReady) {
+    logError("radio     : FAILED to start, will retry — run `make radio`");
   } else {
     logLine("radio     : listening");
   }
@@ -86,7 +93,16 @@ void loop() {
   net.loop();   // before web: this is what starts mDNS, which web then advertises on
   web.loop();
   mqtt.loop();
-  radio.loop();
+
+  if (radioReady) {
+    radio.loop();
+  } else if (elapsed(millis(), lastRadioTry, RADIO_RETRY_MS)) {
+    lastRadioTry = millis();
+    radioReady = radio.begin();
+    if (radioReady) {
+      logLine("radio     : recovered, listening");
+    }
+  }
 
   Packet packet;
   if (radio.take(&packet)) {

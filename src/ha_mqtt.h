@@ -33,5 +33,6 @@ class HaMqtt {
 
   uint32_t _publishedVersion = 0;
   uint32_t _lastAttempt = 0;
-  bool _everConnected = false;
+  uint32_t _retryMs = 5000;
+  bool _attempted = false;
 };
