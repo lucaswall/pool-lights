@@ -27,30 +27,42 @@ bool RadioLink::begin() {
   return _pl1167.begin(_syncword, V2_PACKET_LEN);
 }
 
-void RadioLink::send(const uint8_t *packet) {
-  memcpy(_outgoing, packet, V2_PACKET_LEN);
-  _hasOutgoing = true;
-}
+void RadioLink::send(const uint8_t *packet) { _outgoing.push(packet); }
 
 void RadioLink::loop() {
-  if (_hasOutgoing) {
-    transmitPending();
+  if (!_outgoing.empty()) {
+    transmitNext();
     return;
   }
   listen();
 }
 
-void RadioLink::transmitPending() {
+// One packet per call, so a queue of commands does not block the loop — and the web
+// server and MQTT keep getting served between bursts.
+void RadioLink::transmitNext() {
+  uint8_t packet[V2_PACKET_LEN];
+  if (!_outgoing.pop(packet)) {
+    return;
+  }
+
+  // Logged for the same reason overheard packets are: a command that never left was
+  // indistinguishable from one that did, which hid a queue overwriting itself.
+  Packet decoded;
+  if (decodePacket(packet, &decoded)) {
+    Serial.printf("sent      : %s (0x%02X arg 0x%02X)\n",
+                  v2CommandName(decoded.command, decoded.argument), decoded.command,
+                  decoded.argument);
+  }
+
   for (uint8_t r = 0; r < REPEATS; r++) {
     for (uint8_t c = 0; c < CHANNEL_COUNT; c++) {
-      _pl1167.transmit(CHANNELS[c], _outgoing, V2_PACKET_LEN);
+      _pl1167.transmit(CHANNELS[c], packet, V2_PACKET_LEN);
     }
     if ((r + 1) % REPEATS_PER_BURST == 0) {
       delay(2);
     }
     yield();
   }
-  _hasOutgoing = false;
 }
 
 void RadioLink::listen() {

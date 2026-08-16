@@ -5,6 +5,7 @@
 #include "PL1167.h"
 #include "control.h"
 #include "milight_wire.h"
+#include "packet_queue.h"
 
 // Owns the radio and arbitrates it, because it is half-duplex and two jobs want it: we
 // listen almost all the time so presses on the physical remote reach our state, and we
@@ -15,8 +16,10 @@ class RadioLink : public PacketSink {
 
   bool begin();
 
-  // Queues one packet. Sent on the next loop(), which keeps callers off the radio's
-  // timing and stops a burst from happening inside a web request or an MQTT callback.
+  // Queues one packet. Sent on a later loop(), which keeps callers off the radio's timing
+  // and stops a burst happening inside a web request or an MQTT callback. Queued rather
+  // than held in one slot: a single Home Assistant message can carry colour, brightness
+  // and power, and each would otherwise overwrite the one before it.
   void send(const uint8_t *packet) override;
 
   void loop();
@@ -25,15 +28,14 @@ class RadioLink : public PacketSink {
   bool take(Packet *out);
 
  private:
-  void transmitPending();
+  void transmitNext();
   void listen();
 
   RF24 _rf24;
   PL1167 _pl1167;
   uint8_t _syncword[MILIGHT_SYNCWORD_LEN] = {0};
 
-  uint8_t _outgoing[V2_PACKET_LEN] = {0};
-  bool _hasOutgoing = false;
+  PacketQueue _outgoing;
 
   Packet _received;
   bool _hasReceived = false;
