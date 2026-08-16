@@ -17,14 +17,15 @@ include/            pure, no Arduino headers, unit tested
   packet.h          typed packet + decode result
   encoder.h         Encoder: device id, group, sequence
   state.h           LightState: what the light is doing
-  units.h           Home Assistant <-> protocol conversions
-lib/PL1167/         radio PHY                       (exists)
+  control.h         Control: the facade, header-only so it is testable
+  units.h           UI <-> protocol conversions            (not built yet)
+lib/PL1167/         radio PHY
 src/                peripherals and wiring
-  radio_link.*      half-duplex arbitration
+  radio_link.*      half-duplex arbitration, implements PacketSink
   net.*             WiFi + OTA
-  ha_mqtt.*         discovery and topic translation
-  control.*         the facade
   main.cpp          construction and loop, nothing else
+  web.*             the UI                                 (not built yet)
+  ha_mqtt.*         discovery and topic translation        (not built yet)
 ```
 
 ## Components
@@ -42,9 +43,10 @@ Updated by exactly one method, `apply(const Packet&)`, so a command we sent and 
 overheard from the physical remote travel the same code path. Tracks a dirty flag so the
 MQTT layer knows when to publish.
 
-**`units.h`** — Home Assistant speaks RGB triples and colour temperature; the protocol
-speaks a single hue byte and a 0–100 scale. Rounding, clamping and the hue wrap at 0/360
-are where silent bugs live, so the conversions are pure functions with tests.
+**`units.h`** — *not built yet, and deliberately.* A UI speaks RGB triples and colour
+temperature; the protocol speaks a single hue byte and a 0–100 scale. Rounding, clamping
+and the hue wrap at 0/360 are where silent bugs live, so the conversions will be pure
+functions with tests — written when the web UI gives them a caller, not before.
 
 **`RadioLink`** — owns the PL1167 and arbitrates the radio, which is half-duplex. Default
 state is listening, because state sync depends on overhearing the remote. An outgoing
@@ -56,10 +58,11 @@ splitting them puts that ordering across a class boundary for no gain.
 
 **`Control`** — the facade. Owns `Encoder`, `LightState` and a `PacketSink`. Exposes
 intent: `turnOn()`, `setBrightness(0..100)`, `setHue()`, `setWhite()`. Feeds every packet,
-sent or overheard, into `LightState::apply`.
+sent or overheard, into `LightState::apply`, and drops traffic from other devices and
+groups. Header-only, so the whole layer is unit tested against a fake sink.
 
-**`HaMqtt`** — discovery payload, topic subscriptions, and translation between Home
-Assistant vocabulary and `Control` calls.
+**`HaMqtt`** — *not built yet.* Discovery payload, topic subscriptions, and translation
+between Home Assistant vocabulary and `Control` calls. A web UI comes first.
 
 ## Two rules about dependencies
 
@@ -78,7 +81,11 @@ struct PacketSink {
 `RadioLink` implements it on hardware; tests inject a fake and assert on the bytes. One
 virtual call per command is free, and it makes the whole control layer natively testable.
 
-## Home Assistant specifics
+Until a UI exists, `main.cpp` carries a one-key serial console driving the same `Control`
+methods a UI will call. It keeps the send path exercised instead of dead, and it goes when
+the web UI arrives.
+
+## Home Assistant specifics, for when we get there
 
 Use the **JSON schema** — one payload carrying state, brightness, colour mode and colour,
 rather than a topic per property.
@@ -101,6 +108,6 @@ JSON documents and avoid `String` in anything that runs per packet.
 
 ## Consequence for the diagnostic sketches
 
-`src/tx_test.cpp` exists only because the firmware could not transmit. Once `Control` can,
-it is dead and gets deleted. `radio_selftest` and `sniffer` stay: they answer questions the
-firmware cannot, and both are still useful when the radio misbehaves.
+`src/tx_test.cpp` existed only because the firmware could not transmit. `Control` can, so
+it is gone. `radio_selftest` and `sniffer` stay: they answer questions the firmware cannot,
+and both are still useful when the radio misbehaves.

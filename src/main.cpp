@@ -1,127 +1,107 @@
-// Rungs 1-4: blink + banner, serial, WiFi, OTA.
+// pool-lights — MiLight bridge.
 //
-// Wemos D1 R1 (board = d1, esp8266 core variant "d1"):
-//   LED_BUILTIN == GPIO2 (silkscreen D9), ACTIVE LOW — digitalWrite(LOW) turns it ON.
-//   A second board LED sits on GPIO14 and is active high. Never build on GPIO14: it is
-//   HSPI SCK and the NRF24 needs it later.
+// Construction and the loop, nothing else. The behaviour lives in Control (intent and
+// state), RadioLink (the half-duplex radio) and Net (WiFi and OTA).
+//
+// Wemos D1 R1: LED_BUILTIN is GPIO2, active low. Never build on GPIO14 — it is HSPI SCK
+// and the radio needs it.
 
 #include <Arduino.h>
-#include <ArduinoOTA.h>
-#include <ESP8266WiFi.h>
 
+#include "control.h"
 #include "netid.h"
+#include "radio_link.h"
 #include "secrets.h"
-#include "timing.h"
+#include "net.h"
 
-static const uint32_t BLINK_MS = 500;
-static const uint32_t WIFI_TIMEOUT_MS = 20000;
+// CE is a plain strobe outside SPI, so no register test can catch it miswired. CSN avoids
+// GPIO15, which must be low at reset and would stop the board booting.
+static const uint8_t PIN_CE = 4;
+static const uint8_t PIN_CSN = 5;
 
 static char host[NETID_LEN];
-static uint32_t lastToggle = 0;
-static uint32_t tick = 0;
-static bool ledOn = false;
-static bool otaReady = false;
-static bool wasConnected = false;
+static Net net;
+static RadioLink radio(PIN_CE, PIN_CSN);
+static Control control(radio, MILIGHT_DEVICE_ID, MILIGHT_GROUP);
 
 static void banner() {
   Serial.println();
-  Serial.println(F("=== pool-lights: hello ==="));
-  // Which firmware is actually on the board? After an OTA there is no other way to tell.
-  Serial.printf("build     : %s %s\n",    __DATE__, __TIME__);
-  Serial.printf("core      : %s\n",       ESP.getCoreVersion().c_str());
-  Serial.printf("sdk       : %s\n",       ESP.getSdkVersion());
-  Serial.printf("chip id   : %06x\n",     ESP.getChipId());
-  Serial.printf("host      : %s\n",       host);
-  Serial.printf("cpu       : %u MHz\n",   ESP.getCpuFreqMHz());
-  Serial.printf("flash real: %u bytes\n", ESP.getFlashChipRealSize());
-  Serial.printf("flash cfg : %u bytes\n", ESP.getFlashChipSize());
-  Serial.printf("sketch max: %u bytes\n", ESP.getFreeSketchSpace());
+  Serial.println(F("=== pool-lights ==="));
+  Serial.printf("build     : %s %s\n", __DATE__, __TIME__);
+  Serial.printf("host      : %s\n", host);
   Serial.printf("heap      : %u bytes\n", ESP.getFreeHeap());
-  Serial.printf("reset     : %s\n",       ESP.getResetReason().c_str());
-
-  // On a real D1 R1 this MUST print D2=16 D4=4 D8=0 D10=15. D2=4 D4=2 D8=15 means
-  // d1_mini was built and every pin number in this file is wrong.
+  Serial.printf("reset     : %s\n", ESP.getResetReason().c_str());
   Serial.printf("pinmap    : D2=%u D4=%u D8=%u D10=%u LED_BUILTIN=%u\n",
                 D2, D4, D8, D10, LED_BUILTIN);
 }
 
-static void connectWifi() {
-  WiFi.mode(WIFI_STA);
-  WiFi.persistent(false);      // credentials come from secrets.h; writing them to flash on
-                               // every boot only wears it out
-  WiFi.setAutoReconnect(true);
-  WiFi.hostname(host);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  Serial.printf("wifi      : connecting to %s\n", WIFI_SSID);
-  const uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && !elapsed(millis(), start, WIFI_TIMEOUT_MS)) {
-    delay(200);
-  }
-
-  // Not fatal: the SDK keeps retrying in the background, so a slow AP or a late DHCP
-  // lease resolves itself without a reboot.
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.printf("wifi      : not up yet (status %d), retrying in background\n",
-                  WiFi.status());
-  }
+static void reportState() {
+  const LightState &s = control.state();
+  Serial.printf("state     : %s%s bright %u %s hue %u sat %u kelvin %u effect %u\n",
+                s.on() ? "ON" : "OFF", s.night() ? " (night)" : "", s.brightness(),
+                s.mode() == COLOUR_MODE_RGB ? "rgb" : "white", s.hue(), s.saturation(),
+                s.kelvin(), s.effect());
 }
 
-static void startOta() {
-  ArduinoOTA.setHostname(host);
-  ArduinoOTA.setPassword(OTA_PASSWORD);
-  ArduinoOTA.onStart([]() { Serial.println(F("ota       : start")); });
-  ArduinoOTA.onEnd([]()   { Serial.println(F("ota       : done, rebooting")); });
-  ArduinoOTA.onError([](ota_error_t e) { Serial.printf("ota       : error %u\n", e); });
-  ArduinoOTA.begin();
-  otaReady = true;
-  Serial.printf("ota       : ready on %s at %s\n", host, WiFi.localIP().toString().c_str());
+// A keyboard stands in for the web UI until there is one. It exercises the same Control
+// interface the UI will use, so the send path is covered rather than waiting unused.
+static void console(char key) {
+  switch (key) {
+    case 'o': control.turnOn(); break;
+    case 'f': control.turnOff(); break;
+    case 'w': control.setWhite(); break;
+    case 'r': control.setHue(0x00); break;
+    case 'g': control.setHue(0x55); break;
+    case 'b': control.setHue(0xAB); break;
+    case '1': control.setBrightness(10); break;
+    case '9': control.setBrightness(100); break;
+    case 's': reportState(); return;
+    case '?':
+      Serial.println(F("keys: o=on f=off w=white r/g/b=colour 1/9=brightness s=state"));
+      return;
+    default: return;
+  }
+  Serial.printf("sent      : %c\n", key);
 }
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);            // active low -> start off
+  digitalWrite(LED_BUILTIN, HIGH);   // active low, so start off
 
   Serial.begin(115200);
-  delay(200);                                 // let the CH340 side settle
+  delay(200);
   deviceName(ESP.getChipId(), host, sizeof(host));
   banner();
-  connectWifi();
+
+  if (!radio.begin()) {
+    Serial.println(F("radio     : FAILED to start — run `make radio`"));
+  } else {
+    Serial.println(F("radio     : listening"));
+  }
+
+  net.begin(host, WIFI_SSID, WIFI_PASSWORD, OTA_PASSWORD);
+  Serial.println(F("ready. '?' for keys."));
 }
 
 void loop() {
-  const bool connected = WiFi.status() == WL_CONNECTED;
+  net.loop();
+  radio.loop();
 
-  if (connected) {
-    // Started here rather than in setup() so a board that joins late still gets OTA
-    // without a reboot.
-    if (!otaReady) {
-      startOta();
-    }
-    ArduinoOTA.handle();
+  Packet packet;
+  if (radio.take(&packet)) {
+    control.onReceived(packet);
+    Serial.printf("heard     : %s%s (0x%02X arg 0x%02X) from 0x%04X group %u\n",
+                  packet.held ? "HELD " : "",
+                  v2CommandName(packet.command, packet.argument), packet.command,
+                  packet.argument, packet.deviceId, packet.group);
   }
 
-  if (connected != wasConnected) {
-    wasConnected = connected;
-    if (connected) {
-      Serial.printf("wifi      : up, ip %s rssi %d\n",
-                    WiFi.localIP().toString().c_str(), WiFi.RSSI());
-    } else {
-      Serial.println(F("wifi      : lost"));
-    }
+  if (control.state().dirty()) {
+    control.state().clearDirty();
+    reportState();
   }
 
-  const uint32_t now = millis();
-  if (elapsed(now, lastToggle, BLINK_MS)) {
-    lastToggle = now;
-    ledOn = !ledOn;
-    digitalWrite(LED_BUILTIN, ledOn ? LOW : HIGH);   // LOW = on
-    if (ledOn) {
-      Serial.printf("tick %lu  up=%lus  heap=%u  wifi=%d\n",
-                    (unsigned long)++tick,
-                    (unsigned long)(now / 1000),
-                    ESP.getFreeHeap(),
-                    WiFi.status());
-    }
+  if (Serial.available()) {
+    console((char)Serial.read());
   }
 }
