@@ -97,6 +97,23 @@ curl "http://pool-lights.local/status?json=1" | jq .
 curl -X POST "http://pool-lights.local/api/set?on=1&hue=85&brightness=60"
 ```
 
+### MQTT topics
+
+Under `MQTT_PREFIX` from `secrets.h`, except discovery, which must live under whatever
+`discovery_prefix` the Home Assistant MQTT integration is configured with —
+`HA_DISCOVERY_PREFIX`, `homeassistant/` by default. Get that one wrong and the bridge
+connects, publishes happily, and no entity ever appears.
+
+| Topic | Direction |
+|---|---|
+| `<prefix>light/set` | in — Home Assistant commands, JSON schema |
+| `<prefix>light/state` | out — state, retained |
+| `<prefix>status` | out — `online` / `offline`, retained, last will |
+| `<prefix>effect/faster` | in — button press |
+| `<prefix>effect/slower` | in — button press |
+| `<discovery>light/pool_lights/config` | out — discovery, retained |
+| `<discovery>button/pool_lights_{faster,slower}/config` | out — discovery, retained |
+
 ### The two rings
 
 The console ring holds 80 lines, the fault ring 24, and faults are written to both. The

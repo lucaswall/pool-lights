@@ -8,9 +8,9 @@
 // Debug UI: one page, a state endpoint the browser polls, and one command endpoint.
 //
 // Deliberately the synchronous server bundled with the core rather than an async one.
-// Free heap here is around 48 KB, the state payload is under 200 bytes, and the radio
-// blocks for a few hundred milliseconds on every transmit — none of which argues for a
-// second TCP stack and a WebSocket. A request arriving mid-burst simply waits.
+// Free heap is around 30 KB, the state payload is under 200 bytes, and the radio blocks
+// for a few hundred milliseconds on every transmit — none of which argues for a second
+// TCP stack and a WebSocket. A request arriving mid-burst simply waits.
 class WebUi {
  public:
   WebUi(Control &control, Net &net, const char *hostname)

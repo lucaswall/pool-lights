@@ -58,8 +58,8 @@ void WebUi::handleState() {
   _server.send(200, "application/json", body);
 }
 
-// Streamed a line at a time: the buffer is 4 KB and assembling it into one response
-// would need that much again from a heap with about 44 KB free.
+// Streamed a line at a time: the two rings are over 10 KB together and assembling one
+// into a single response would need that much again from a heap with about 30 KB free.
 void WebUi::handleLog() {
   const LogBuffer &log = logBuffer();
   _server.setContentLength(CONTENT_LENGTH_UNKNOWN);

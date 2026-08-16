@@ -108,7 +108,7 @@ closes the port.
 
 - **115200** — our sketches (`Serial.begin(115200)`, `monitor_speed = 115200`)
 - **74880** — the ESP8266 boot ROM banner. Garbage at 115200 during the first second after
-  reset is expected, not a fault. Read it with `pio device monitor -b 74880`
+  reset is expected, not a fault. Read it with `make bootlog`
 - **9600** — `pio device monitor`'s own default when no speed is given. Cause of most
   "garbage on the monitor" reports
 

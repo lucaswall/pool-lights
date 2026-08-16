@@ -7,7 +7,8 @@ PlatformIO board id `d1`.
 
 **The R1 is not the D1 mini.** Its pin map differs, and building with `board = d1_mini`
 succeeds, uploads, and then misbehaves silently because every `Dn` constant points at a
-different GPIO. The hello-world sketch prints a `pinmap` line specifically to catch this.
+different GPIO. The boot banner in `src/main.cpp` prints a `pinmap` line specifically to
+catch this.
 
 ```
 D0=GPIO3   D1=GPIO1   D2=GPIO16  D3=GPIO5   D4=GPIO4   D5=GPIO14

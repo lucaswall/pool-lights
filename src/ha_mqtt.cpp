@@ -140,7 +140,8 @@ void HaMqtt::publishDiscovery() {
     btn["unique_id"] = uid;
 
     char cfg[64];
-    snprintf(cfg, sizeof(cfg), "homeassistant/button/pool_lights_%s/config", ids[i]);
+    snprintf(cfg, sizeof(cfg), HA_DISCOVERY_PREFIX "button/pool_lights_%s/config",
+             ids[i]);
     serializeJson(btn, payload, sizeof(payload));
     if (!_mqtt.publish(cfg, payload, true)) {
       logError("mqtt      : button discovery rejected (%s)", ids[i]);

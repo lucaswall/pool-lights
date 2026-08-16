@@ -41,7 +41,7 @@ hardware-independent half of the codebase to stay hardware-independent.
 
 Some things cannot be unit tested and should not be faked: the RF protocol is one-way and
 the receiver reports nothing, so the only proof a command worked is that the light
-changed. Those checks are human, and the plan says so.
+changed. Those checks are human.
 
 ## Hardware code
 

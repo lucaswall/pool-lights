@@ -8,7 +8,6 @@ and always closes.
     tools/serial_log.py                 8 s at 115200
     tools/serial_log.py -s 20 -o        20 s, also written to logs/
     tools/serial_log.py --boot          74880, the ESP8266 boot ROM banner
-    tools/serial_log.py --send o9r      type keys at the firmware console, then read
 
 Reading serial always restarts the board: macOS asserts DTR/RTS when the port is opened,
 before any userspace setting applies, and clearing HUPCL does not prevent it. So there is
@@ -72,8 +71,6 @@ def main():
     ap.add_argument("--boot", action="store_true", help="--baud 74880, the boot ROM rate")
     ap.add_argument("-s", "--seconds", type=float, default=8.0)
     ap.add_argument("-t", "--timestamp", action="store_true")
-    ap.add_argument("--send", metavar="KEYS",
-                    help="send each character once the board has booted")
     ap.add_argument("-o", "--out", nargs="?", const="", metavar="FILE",
                     help="also write to FILE, or a timestamped file under logs/")
     args = ap.parse_args()
@@ -110,8 +107,6 @@ def main():
     start = time.time()
     deadline = start + args.seconds
     pending = b""
-    # Keys go out after the board has finished booting, or the console is not reading yet.
-    send_at = start + 6.0 if args.send else None
 
     def emit(raw):
         # The first second after a reset is the 74880 boot ROM banner seen at the wrong
@@ -125,11 +120,6 @@ def main():
 
     try:
         while time.time() < deadline:
-            if send_at is not None and time.time() >= send_at:
-                send_at = None
-                for key in args.send:
-                    ser.write(key.encode())
-                    time.sleep(0.4)
             chunk = ser.read(4096)
             if not chunk:
                 continue

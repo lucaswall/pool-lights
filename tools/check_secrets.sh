@@ -19,10 +19,14 @@ fi
 ipv4='[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'
 mac='[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}'
 cred='(PASSWORD|PASSWD|SECRET|TOKEN|API_?KEY|PSK)[[:space:]"]*[=:][[:space:]]*"?[A-Za-z0-9._/+-]{6,}'
-allow='192\.0\.2\.|198\.51\.100\.|203\.0\.113\.|0\.0\.0\.0|127\.0\.0\.1|255\.255\.255\.255|<[A-Z_]+>|your-|example|placeholder|TODO|xx:xx'
+# The sniffed device id is the RF credential CLAUDE.md singles out, and no generic pattern
+# can recognise a bare hex number. What is recognisable is the macro it lives in, which is
+# how it would realistically escape: copied out of secrets.h into a doc or an example.
+rfid='MILIGHT_(DEVICE_ID|GROUP)[[:space:]]+[^ ]'
+allow='192\.0\.2\.|198\.51\.100\.|203\.0\.113\.|0\.0\.0\.0|127\.0\.0\.1|255\.255\.255\.255|<[A-Z_]+>|your-|example|placeholder|TODO|xx:xx|MILIGHT_DEVICE_ID 0x0000|MILIGHT_GROUP     1'
 
 fail=0
-for pat in "$ipv4" "$mac" "$cred"; do
+for pat in "$ipv4" "$mac" "$cred" "$rfid"; do
   hits=$(printf '%s\n' "$content" | grep -E "$pat" | grep -Ev "$allow")
   if [ -n "$hits" ]; then
     printf 'SUSPECT /%s/\n%s\n' "$pat" "$hits" | sed 's/^/        /'
