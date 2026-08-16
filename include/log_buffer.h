@@ -8,16 +8,19 @@
 // with no USB. Fixed size and fixed slots: it has to run for weeks without growing and
 // without fragmenting the heap.
 #define LOG_LINES 80
+#define ERROR_LINES 24
 #define LOG_LINE_LEN 100
 
-class LogBuffer {
+// Templated on depth so a second, smaller ring for faults costs no duplicated code.
+template <uint8_t Lines>
+class LogRing {
  public:
   // uptimeSeconds is passed in rather than read here, so this stays pure and testable.
   void push(uint32_t uptimeSeconds, const char *message) {
     // A retry loop repeats the same line every few seconds. Collapsing consecutive
     // repeats stops one persistent fault from evicting everything worth reading.
     if (_count > 0) {
-      Slot &last = _slots[(uint8_t)((_head + LOG_LINES - 1) % LOG_LINES)];
+      Slot &last = _slots[(uint8_t)((_head + Lines - 1) % Lines)];
       if (strncmp(last.message, message, LOG_LINE_LEN - 1) == 0) {
         last.seconds = uptimeSeconds;   // when it last happened beats when it started
         if (last.repeats < 0xFFFF) {
@@ -33,8 +36,8 @@ class LogBuffer {
     slot.seconds = uptimeSeconds;
     slot.repeats = 1;
 
-    _head = (uint8_t)((_head + 1) % LOG_LINES);
-    if (_count < LOG_LINES) {
+    _head = (uint8_t)((_head + 1) % Lines);
+    if (_count < Lines) {
       _count++;
     }
   }
@@ -51,8 +54,8 @@ class LogBuffer {
       return;
     }
 
-    const uint8_t oldest = (uint8_t)((_head + LOG_LINES - _count) % LOG_LINES);
-    const Slot &slot = _slots[(oldest + index) % LOG_LINES];
+    const uint8_t oldest = (uint8_t)((_head + Lines - _count) % Lines);
+    const Slot &slot = _slots[(oldest + index) % Lines];
     const uint32_t s = slot.seconds;
 
     if (slot.repeats > 1) {
@@ -72,7 +75,10 @@ class LogBuffer {
     uint16_t repeats;
   };
 
-  Slot _slots[LOG_LINES] = {};
+  Slot _slots[Lines] = {};
   uint8_t _head = 0;
   uint8_t _count = 0;
 };
+
+typedef LogRing<LOG_LINES> LogBuffer;
+typedef LogRing<ERROR_LINES> ErrorBuffer;

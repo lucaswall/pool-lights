@@ -111,7 +111,7 @@ footer a{color:var(--accent);text-decoration:none}
   <pre id="log">…</pre>
 </div>
 
-<footer><span id="foot">connecting…</span><br><a href="/log">raw log</a></footer>
+<footer><span id="foot">connecting…</span><br><a href="/status">status</a> · <a href="/errors">faults</a> · <a href="/log">raw log</a></footer>
 </main><script>
 const $=i=>document.getElementById(i);
 let ver=-1, held=0, fails=0;

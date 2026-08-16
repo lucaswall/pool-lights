@@ -21,6 +21,8 @@ void WebUi::start() {
   _server.on("/api/state", HTTP_GET, [this]() { handleState(); });
   _server.on("/api/set", HTTP_POST, [this]() { handleSet(); });
   _server.on("/log", HTTP_GET, [this]() { handleLog(); });
+  _server.on("/errors", HTTP_GET, [this]() { handleErrors(); });
+  _server.on("/status", HTTP_GET, [this]() { handleStatus(); });
   _server.onNotFound([this]() { _server.send(404, "text/plain", "not found"); });
   _server.begin();
 
@@ -67,6 +69,48 @@ void WebUi::handleLog() {
     _server.sendContent("\n");
   }
   _server.sendContent("");
+}
+
+void WebUi::handleErrors() {
+  const ErrorBuffer &errors = errorBuffer();
+  _server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  _server.sendHeader("Cache-Control", "no-store");
+  _server.send(200, "text/plain", errors.count() == 0 ? "no faults recorded\n" : "");
+  char line[LOG_LINE_LEN + 24];
+  for (uint8_t i = 0; i < errors.count(); i++) {
+    errors.render(i, line, sizeof(line));
+    _server.sendContent(line);
+    _server.sendContent("\n");
+  }
+  _server.sendContent("");
+}
+
+// A snapshot, computed now rather than remembered. The boot banner scrolls out of the log
+// within hours; nothing here can drift out, because nothing here is stored.
+void WebUi::handleStatus() {
+  const LightState &s = _control.state();
+  const uint32_t up = millis() / 1000;
+
+  char body[560];
+  snprintf(body, sizeof(body),
+           "host    : %s\n"
+           "build   : %s %s\n"
+           "reset   : %s\n"
+           "uptime  : %luh %02lum %02lus\n"
+           "heap    : %u free\n"
+           "wifi    : %s  ip %s  rssi %d dBm\n"
+           "light   : %s%s  bright %u  %s  hue %u  sat %u  kelvin %u  effect %u\n"
+           "log     : %u of %u lines, %u faults\n",
+           _hostname, __DATE__, __TIME__, ESP.getResetReason().c_str(),
+           (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60),
+           (unsigned long)(up % 60), ESP.getFreeHeap(),
+           _net.connected() ? "up" : "down", WiFi.localIP().toString().c_str(), _net.rssi(),
+           s.on() ? "on" : "off", s.night() ? " (night)" : "", s.brightness(),
+           s.mode() == COLOUR_MODE_RGB ? "rgb" : "white", s.hue(), s.saturation(),
+           s.kelvin(), s.effect(), logBuffer().count(), LOG_LINES, errorBuffer().count());
+
+  _server.sendHeader("Cache-Control", "no-store");
+  _server.send(200, "text/plain", body);
 }
 
 void WebUi::handleSet() {

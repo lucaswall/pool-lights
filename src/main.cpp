@@ -29,7 +29,7 @@ static const char HOST[] = "pool-lights";
 static Net net;
 static RadioLink radio(PIN_CE, PIN_CSN);
 static Control control(radio, MILIGHT_DEVICE_ID, MILIGHT_GROUP);
-static WebUi web(control, HOST);
+static WebUi web(control, net, HOST);
 static HaMqtt mqtt(control, HOST);
 static uint32_t reportedVersion = 0;
 
@@ -38,12 +38,12 @@ static uint32_t reportedVersion = 0;
 static const uint32_t HEAP_REPORT_STEP = 1024;
 static uint32_t heapLowWater = 0;
 
-// A heartbeat, so an idle log is visibly idle rather than ambiguously stalled, and an
-// hourly line that is worth reading back through days of history.
+// A heartbeat, so an idle log reads as idle rather than as a stalled page. Slots are
+// fixed width, so a terse line costs exactly what a full one does — there is nothing to
+// be saved by reporting less. Uptime is deliberately absent: every line already carries
+// it as a timestamp, and repeating it here would stop identical readings collapsing.
 static const uint32_t HEALTH_MS = 5UL * 60 * 1000;
-static const uint32_t STATUS_MS = 60UL * 60 * 1000;
 static uint32_t lastHealth = 0;
-static uint32_t lastStatus = 0;
 
 static void banner() {
   Serial.println();
@@ -73,7 +73,7 @@ void setup() {
   banner();
 
   if (!radio.begin()) {
-    logLine("radio     : FAILED to start — run `make radio`");
+    logError("radio     : FAILED to start — run `make radio`");
   } else {
     logLine("radio     : listening");
   }
@@ -100,13 +100,7 @@ void loop() {
   const uint32_t now = millis();
   if (elapsed(now, lastHealth, HEALTH_MS)) {
     lastHealth = now;
-    logLine("health    : heap %lu rssi %d", (unsigned long)ESP.getFreeHeap(), net.rssi());
-  }
-  if (elapsed(now, lastStatus, STATUS_MS)) {
-    lastStatus = now;
-    const uint32_t up = now / 1000;
-    logLine("status    : up %luh%02lum heap %lu low %lu rssi %d wifi %s mqtt %s light %s",
-            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60),
+    logLine("health    : heap %lu low %lu rssi %d wifi %s mqtt %s light %s",
             (unsigned long)ESP.getFreeHeap(), (unsigned long)heapLowWater, net.rssi(),
             net.connected() ? "up" : "down", mqtt.connected() ? "up" : "down",
             control.state().on() ? "on" : "off");

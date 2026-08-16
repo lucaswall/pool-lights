@@ -29,7 +29,7 @@ void Net::begin(const char *hostname, const char *ssid, const char *password,
 
   // Not fatal: the SDK keeps retrying, so a slow AP resolves itself without a reboot.
   if (WiFi.status() != WL_CONNECTED) {
-    logLine("wifi      : not up yet (status %d), retrying in background", WiFi.status());
+    logError("wifi      : not up yet (status %d), retrying in background", WiFi.status());
   }
 }
 
@@ -48,7 +48,7 @@ void Net::loop() {
       ArduinoOTA.setPassword(_otaPassword);
       ArduinoOTA.onStart([]() { logLine("ota       : start"); });
       ArduinoOTA.onEnd([]() { logLine("ota       : done, rebooting"); });
-      ArduinoOTA.onError([](ota_error_t e) { logLine("ota       : error %u", e); });
+      ArduinoOTA.onError([](ota_error_t e) { logError("ota       : error %u", e); });
       ArduinoOTA.begin();
       _otaReady = true;
       logLine("ota       : ready on %s at %s", _hostname,
@@ -63,7 +63,7 @@ void Net::loop() {
       logLine("wifi      : up, ip %s rssi %d", WiFi.localIP().toString().c_str(),
            WiFi.RSSI());
     } else {
-      logLine("wifi      : lost");
+      logError("wifi      : lost");
     }
   }
 }

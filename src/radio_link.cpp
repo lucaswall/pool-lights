@@ -30,7 +30,7 @@ bool RadioLink::begin() {
 
 void RadioLink::send(const uint8_t *packet) {
   if (!_outgoing.push(packet)) {
-    logLine("radio     : command queue full, oldest dropped");
+    logError("radio     : command queue full, oldest dropped");
   }
 }
 
@@ -59,14 +59,24 @@ void RadioLink::transmitNext() {
                   decoded.argument);
   }
 
+  uint16_t failed = 0;
   for (uint8_t r = 0; r < REPEATS; r++) {
     for (uint8_t c = 0; c < CHANNEL_COUNT; c++) {
-      _pl1167.transmit(CHANNELS[c], packet, V2_PACKET_LEN);
+      if (!_pl1167.transmit(CHANNELS[c], packet, V2_PACKET_LEN)) {
+        failed++;
+      }
     }
     if ((r + 1) % REPEATS_PER_BURST == 0) {
       delay(2);
     }
     yield();
+  }
+
+  // The chip reports whether each packet actually left. Ignoring that is how a radio
+  // that has stopped transmitting looks identical to one that is working.
+  if (failed > 0) {
+    logError("radio     : %u of %u transmissions failed", (unsigned)failed,
+             (unsigned)(REPEATS * CHANNEL_COUNT));
   }
 }
 

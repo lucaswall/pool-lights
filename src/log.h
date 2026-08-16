@@ -11,4 +11,9 @@
 // surfaces in translation units that happen to pull maths in.
 void logLine(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
+// Faults go to both rings. The main one fills with routine traffic, so an error from
+// hours ago would otherwise be long gone by the time anyone looks.
+void logError(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
 const LogBuffer &logBuffer();
+const ErrorBuffer &errorBuffer();

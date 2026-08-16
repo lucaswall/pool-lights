@@ -54,7 +54,7 @@ bool HaMqtt::connect() {
   // The last will is the whole availability story: a crashed bridge looks exactly like an
   // idle one, so the broker has to be the one to say we are gone.
   if (!_mqtt.connect(_hostname, MQTT_USER, MQTT_PASSWORD, T_AVAIL, 0, true, "offline")) {
-    logLine("mqtt      : connect failed, state %d", _mqtt.state());
+    logError("mqtt      : connect failed, state %d", _mqtt.state());
     return false;
   }
 
@@ -103,7 +103,9 @@ void HaMqtt::publishDiscovery() {
 
   char payload[1024];
   serializeJson(doc, payload, sizeof(payload));
-  _mqtt.publish("homeassistant/light/pool_lights/config", payload, true);
+  if (!_mqtt.publish("homeassistant/light/pool_lights/config", payload, true)) {
+    logError("mqtt      : light discovery rejected (%u bytes)", (unsigned)strlen(payload));
+  }
 
   // Two buttons. They are momentary — no state to report, so no state topic.
   const char *ids[] = {"faster", "slower"};
@@ -122,7 +124,9 @@ void HaMqtt::publishDiscovery() {
     char cfg[64];
     snprintf(cfg, sizeof(cfg), "homeassistant/button/pool_lights_%s/config", ids[i]);
     serializeJson(btn, payload, sizeof(payload));
-    _mqtt.publish(cfg, payload, true);
+    if (!_mqtt.publish(cfg, payload, true)) {
+      logError("mqtt      : button discovery rejected (%s)", ids[i]);
+    }
   }
 }
 
@@ -148,7 +152,9 @@ void HaMqtt::publishState() {
 
   char payload[256];
   serializeJson(doc, payload, sizeof(payload));
-  _mqtt.publish(T_STATE, payload, true);
+  if (!_mqtt.publish(T_STATE, payload, true)) {
+    logError("mqtt      : state publish rejected (%u bytes)", (unsigned)strlen(payload));
+  }
 }
 
 void HaMqtt::onMessage(const char *topic, const uint8_t *payload, unsigned int length) {
@@ -163,6 +169,7 @@ void HaMqtt::onMessage(const char *topic, const uint8_t *payload, unsigned int l
 
   JsonDocument doc;
   if (deserializeJson(doc, payload, length)) {
+    logError("mqtt      : could not parse a command on %s", topic);
     return;
   }
 

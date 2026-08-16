@@ -3,6 +3,7 @@
 #include <ESP8266WebServer.h>
 
 #include "control.h"
+#include "net.h"
 
 // Debug UI: one page, a state endpoint the browser polls, and one command endpoint.
 //
@@ -12,8 +13,8 @@
 // second TCP stack and a WebSocket. A request arriving mid-burst simply waits.
 class WebUi {
  public:
-  WebUi(Control &control, const char *hostname)
-      : _server(80), _control(control), _hostname(hostname) {}
+  WebUi(Control &control, Net &net, const char *hostname)
+      : _server(80), _control(control), _net(net), _hostname(hostname) {}
 
   // Starts itself once WiFi is up, the same way OTA does, so main does not have to
   // sequence them.
@@ -24,10 +25,13 @@ class WebUi {
   void handleState();
   void handleSet();
   void handleLog();
+  void handleErrors();
+  void handleStatus();
 
   bool _started = false;
 
   ESP8266WebServer _server;
   Control &_control;
+  Net &_net;
   const char *_hostname;
 };
