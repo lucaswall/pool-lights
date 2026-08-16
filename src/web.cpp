@@ -3,6 +3,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 
+#include "log.h"
 #include "page.h"
 
 void WebUi::loop() {
@@ -19,6 +20,7 @@ void WebUi::start() {
   _server.on("/", HTTP_GET, [this]() { _server.send_P(200, "text/html", PAGE_HTML); });
   _server.on("/api/state", HTTP_GET, [this]() { handleState(); });
   _server.on("/api/set", HTTP_POST, [this]() { handleSet(); });
+  _server.on("/log", HTTP_GET, [this]() { handleLog(); });
   _server.onNotFound([this]() { _server.send(404, "text/plain", "not found"); });
   _server.begin();
 
@@ -27,7 +29,7 @@ void WebUi::start() {
   MDNS.addService("http", "tcp", 80);
 
   _started = true;
-  Serial.printf("web       : http://%s.local/  (http://%s/)\n", _hostname,
+  logLine("web       : http://%s.local/  (http://%s/)", _hostname,
                 WiFi.localIP().toString().c_str());
 }
 
@@ -49,6 +51,20 @@ void WebUi::handleState() {
 
   _server.sendHeader("Cache-Control", "no-store");
   _server.send(200, "application/json", body);
+}
+
+// Streamed a line at a time: the buffer is 4 KB and assembling it into one response
+// would need that much again from a heap with about 44 KB free.
+void WebUi::handleLog() {
+  const LogBuffer &log = logBuffer();
+  _server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  _server.sendHeader("Cache-Control", "no-store");
+  _server.send(200, "text/plain", "");
+  for (uint8_t i = 0; i < log.count(); i++) {
+    _server.sendContent(log.line(i));
+    _server.sendContent("\n");
+  }
+  _server.sendContent("");
 }
 
 void WebUi::handleSet() {

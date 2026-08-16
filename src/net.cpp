@@ -4,6 +4,7 @@
 #include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
 
+#include "log.h"
 #include "timing.h"
 
 static const uint32_t CONNECT_TIMEOUT_MS = 20000;
@@ -20,7 +21,7 @@ void Net::begin(const char *hostname, const char *ssid, const char *password,
   WiFi.hostname(hostname);
   WiFi.begin(ssid, password);
 
-  Serial.printf("wifi      : connecting to %s\n", ssid);
+  logLine("wifi      : connecting to %s", ssid);
   const uint32_t start = millis();
   while (WiFi.status() != WL_CONNECTED && !elapsed(millis(), start, CONNECT_TIMEOUT_MS)) {
     delay(200);
@@ -28,8 +29,7 @@ void Net::begin(const char *hostname, const char *ssid, const char *password,
 
   // Not fatal: the SDK keeps retrying, so a slow AP resolves itself without a reboot.
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.printf("wifi      : not up yet (status %d), retrying in background\n",
-                  WiFi.status());
+    logLine("wifi      : not up yet (status %d), retrying in background", WiFi.status());
   }
 }
 
@@ -44,13 +44,13 @@ void Net::loop() {
     if (!_otaReady) {
       ArduinoOTA.setHostname(_hostname);
       ArduinoOTA.setPassword(_otaPassword);
-      ArduinoOTA.onStart([]() { Serial.println(F("ota       : start")); });
-      ArduinoOTA.onEnd([]() { Serial.println(F("ota       : done, rebooting")); });
-      ArduinoOTA.onError([](ota_error_t e) { Serial.printf("ota       : error %u\n", e); });
+      ArduinoOTA.onStart([]() { logLine("ota       : start"); });
+      ArduinoOTA.onEnd([]() { logLine("ota       : done, rebooting"); });
+      ArduinoOTA.onError([](ota_error_t e) { logLine("ota       : error %u", e); });
       ArduinoOTA.begin();
       _otaReady = true;
-      Serial.printf("ota       : ready on %s at %s\n", _hostname,
-                    WiFi.localIP().toString().c_str());
+      logLine("ota       : ready on %s at %s", _hostname,
+           WiFi.localIP().toString().c_str());
     }
     ArduinoOTA.handle();
   }
@@ -58,10 +58,10 @@ void Net::loop() {
   if (up != _wasConnected) {
     _wasConnected = up;
     if (up) {
-      Serial.printf("wifi      : up, ip %s rssi %d\n", WiFi.localIP().toString().c_str(),
-                    WiFi.RSSI());
+      logLine("wifi      : up, ip %s rssi %d", WiFi.localIP().toString().c_str(),
+           WiFi.RSSI());
     } else {
-      Serial.println(F("wifi      : lost"));
+      logLine("wifi      : lost");
     }
   }
 }

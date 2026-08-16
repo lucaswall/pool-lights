@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <string.h>
 
+#include "log.h"
 #include "timing.h"
 
 // The rgb+cct radio config, which is what the FUT088/089/092 family uses.
@@ -49,7 +50,7 @@ void RadioLink::transmitNext() {
   // indistinguishable from one that did, which hid a queue overwriting itself.
   Packet decoded;
   if (decodePacket(packet, &decoded)) {
-    Serial.printf("sent      : %s (0x%02X arg 0x%02X)\n",
+    logLine("sent      : %s (0x%02X arg 0x%02X)",
                   v2CommandName(decoded.command, decoded.argument), decoded.command,
                   decoded.argument);
   }

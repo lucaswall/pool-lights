@@ -1,8 +1,10 @@
 #include "ha_mqtt.h"
 
 #include <ArduinoJson.h>
+#include <Arduino.h>
 #include <ESP8266WiFi.h>
 
+#include "log.h"
 #include "secrets.h"
 #include "units.h"
 
@@ -52,7 +54,7 @@ bool HaMqtt::connect() {
   // The last will is the whole availability story: a crashed bridge looks exactly like an
   // idle one, so the broker has to be the one to say we are gone.
   if (!_mqtt.connect(_hostname, MQTT_USER, MQTT_PASSWORD, T_AVAIL, 0, true, "offline")) {
-    Serial.printf("mqtt      : connect failed, state %d\n", _mqtt.state());
+    logLine("mqtt      : connect failed, state %d", _mqtt.state());
     return false;
   }
 
@@ -63,7 +65,7 @@ bool HaMqtt::connect() {
   publishDiscovery();
   publishState();
 
-  Serial.printf("mqtt      : connected to %s as %s\n", MQTT_HOST, MQTT_USER);
+  logLine("mqtt      : connected to %s as %s", MQTT_HOST, MQTT_USER);
   _everConnected = true;
   return true;
 }

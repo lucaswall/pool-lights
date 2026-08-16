@@ -23,6 +23,7 @@ class WebUi {
   void start();
   void handleState();
   void handleSet();
+  void handleLog();
 
   bool _started = false;
 

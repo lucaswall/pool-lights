@@ -58,6 +58,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
 background:#fff;border:2px solid #0e1116}
 #hue{--track:linear-gradient(90deg,red,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,red)}
 footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
+footer a{color:var(--accent);text-decoration:none}
 .stale{opacity:.45}
 </style></head><body><main>
 <h1>pool-lights</h1>
@@ -100,7 +101,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
   <div class="row" id="fx"></div>
 </div>
 
-<footer id="foot">connecting…</footer>
+<footer><span id="foot">connecting…</span><br><a href="/log">console log</a></footer>
 </main><script>
 const $=i=>document.getElementById(i);
 let ver=-1, held=0, fails=0;

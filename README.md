@@ -75,6 +75,16 @@ OTA, so one bad flash puts you back on USB.
 
 `make help` lists every target.
 
+The board serves its recent console output at `/log`, kept in a small ring buffer, because
+once it is in a case there is no USB to read. That buffer is RAM, so it starts empty after
+a restart — the boot banner reports `reset reason`, which is what distinguishes a crash
+from a power cut.
+
+Reach it by IP rather than `pool-lights.local` if a lookup ever seems to hang: the ESP8266
+mDNS responder answers `A` queries but ignores `AAAA` entirely, without even a negative
+reply, so a resolver asking for both waits out its full timeout — about five seconds — on
+the IPv6 half before using the IPv4 answer it already had.
+
 ## Layout
 
 ```

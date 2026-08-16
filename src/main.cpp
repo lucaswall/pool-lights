@@ -8,6 +8,8 @@
 
 #include <Arduino.h>
 
+#include "log.h"
+
 #include "control.h"
 #include "ha_mqtt.h"
 #include "net.h"
@@ -32,18 +34,18 @@ static uint32_t reportedVersion = 0;
 
 static void banner() {
   Serial.println();
-  Serial.println(F("=== pool-lights ==="));
-  Serial.printf("build     : %s %s\n", __DATE__, __TIME__);
-  Serial.printf("host      : %s\n", HOST);
-  Serial.printf("heap      : %u bytes\n", ESP.getFreeHeap());
-  Serial.printf("reset     : %s\n", ESP.getResetReason().c_str());
-  Serial.printf("pinmap    : D2=%u D4=%u D8=%u D10=%u LED_BUILTIN=%u\n",
+  logLine("=== pool-lights ===");
+  logLine("build     : %s %s", __DATE__, __TIME__);
+  logLine("host      : %s", HOST);
+  logLine("heap      : %u bytes", ESP.getFreeHeap());
+  logLine("reset     : %s", ESP.getResetReason().c_str());
+  logLine("pinmap    : D2=%u D4=%u D8=%u D10=%u LED_BUILTIN=%u",
                 D2, D4, D8, D10, LED_BUILTIN);
 }
 
 static void reportState() {
   const LightState &s = control.state();
-  Serial.printf("state     : %s%s bright %u %s hue %u sat %u kelvin %u effect %u\n",
+  logLine("state     : %s%s bright %u %s hue %u sat %u kelvin %u effect %u",
                 s.on() ? "ON" : "OFF", s.night() ? " (night)" : "", s.brightness(),
                 s.mode() == COLOUR_MODE_RGB ? "rgb" : "white", s.hue(), s.saturation(),
                 s.kelvin(), s.effect());
@@ -58,9 +60,9 @@ void setup() {
   banner();
 
   if (!radio.begin()) {
-    Serial.println(F("radio     : FAILED to start — run `make radio`"));
+    logLine("radio     : FAILED to start — run `make radio`");
   } else {
-    Serial.println(F("radio     : listening"));
+    logLine("radio     : listening");
   }
 
   net.begin(HOST, WIFI_SSID, WIFI_PASSWORD, OTA_PASSWORD);
@@ -75,7 +77,7 @@ void loop() {
   Packet packet;
   if (radio.take(&packet)) {
     control.onReceived(packet);
-    Serial.printf("heard     : %s%s (0x%02X arg 0x%02X) from 0x%04X group %u\n",
+    logLine("heard     : %s%s (0x%02X arg 0x%02X) from 0x%04X group %u",
                   packet.held ? "HELD " : "",
                   v2CommandName(packet.command, packet.argument), packet.command,
                   packet.argument, packet.deviceId, packet.group);
