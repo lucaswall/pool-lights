@@ -32,6 +32,11 @@ static WebUi web(control, HOST);
 static HaMqtt mqtt(control, HOST);
 static uint32_t reportedVersion = 0;
 
+// Logging heap on a timer would churn the ring for nothing. Reporting only new lows keeps
+// a healthy board silent while a leak shows up as a steady descent.
+static const uint32_t HEAP_REPORT_STEP = 1024;
+static uint32_t heapLowWater = 0;
+
 static void banner() {
   Serial.println();
   logLine("=== pool-lights ===");
@@ -65,6 +70,7 @@ void setup() {
     logLine("radio     : listening");
   }
 
+  heapLowWater = ESP.getFreeHeap();
   net.begin(HOST, WIFI_SSID, WIFI_PASSWORD, OTA_PASSWORD);
 }
 
@@ -81,6 +87,12 @@ void loop() {
                   packet.held ? "HELD " : "",
                   v2CommandName(packet.command, packet.argument), packet.command,
                   packet.argument, packet.deviceId, packet.group);
+  }
+
+  const uint32_t heap = ESP.getFreeHeap();
+  if (heap + HEAP_REPORT_STEP < heapLowWater) {
+    heapLowWater = heap;
+    logLine("heap      : new low %lu bytes", (unsigned long)heap);
   }
 
   if (control.state().version() != reportedVersion) {

@@ -28,7 +28,11 @@ bool RadioLink::begin() {
   return _pl1167.begin(_syncword, V2_PACKET_LEN);
 }
 
-void RadioLink::send(const uint8_t *packet) { _outgoing.push(packet); }
+void RadioLink::send(const uint8_t *packet) {
+  if (!_outgoing.push(packet)) {
+    logLine("radio     : command queue full, oldest dropped");
+  }
+}
 
 void RadioLink::loop() {
   if (!_outgoing.empty()) {

@@ -60,8 +60,10 @@ void WebUi::handleLog() {
   _server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   _server.sendHeader("Cache-Control", "no-store");
   _server.send(200, "text/plain", "");
+  char line[LOG_LINE_LEN + 24];
   for (uint8_t i = 0; i < log.count(); i++) {
-    _server.sendContent(log.line(i));
+    log.render(i, line, sizeof(line));
+    _server.sendContent(line);
     _server.sendContent("\n");
   }
   _server.sendContent("");

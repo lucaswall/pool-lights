@@ -57,6 +57,11 @@ box-shadow:0 1px 4px #0008}
 input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
 background:#fff;border:2px solid #0e1116}
 #hue{--track:linear-gradient(90deg,red,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,red)}
+#log{margin:0;padding:10px;background:#0b0e13;border:1px solid var(--line);
+border-radius:10px;max-height:44vh;overflow:auto;font:11px/1.5 ui-monospace,Menlo,
+Consolas,monospace;color:var(--dim);white-space:pre-wrap;word-break:break-word}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+margin:0 0 10px;font-weight:600}
 footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
 footer a{color:var(--accent);text-decoration:none}
 .stale{opacity:.45}
@@ -101,7 +106,12 @@ footer a{color:var(--accent);text-decoration:none}
   <div class="row" id="fx"></div>
 </div>
 
-<footer><span id="foot">connecting…</span><br><a href="/log">console log</a></footer>
+<div class="card">
+  <h2>Console</h2>
+  <pre id="log">…</pre>
+</div>
+
+<footer><span id="foot">connecting…</span><br><a href="/log">raw log</a></footer>
 </main><script>
 const $=i=>document.getElementById(i);
 let ver=-1, held=0, fails=0;
@@ -154,6 +164,20 @@ function render(s){
     's · heap '+s.heap;
 }
 
+// Polled slower than the state, and only while the page is actually on screen: the log
+// is several KB and the board is also driving a radio.
+function loadLog(){
+  if(document.visibilityState!=='visible')return;
+  fetch('/log').then(r=>r.text()).then(t=>{
+    const el=$('log');
+    const pinned=el.scrollTop+el.clientHeight>=el.scrollHeight-24;
+    if(el.textContent!==t){
+      el.textContent=t;
+      if(pinned)el.scrollTop=el.scrollHeight;
+    }
+  }).catch(()=>{});
+}
+
 function load(){
   fetch('/api/state').then(r=>r.json()).then(s=>{
     fails=0;document.body.classList.remove('stale');
@@ -163,4 +187,5 @@ function load(){
   });
 }
 load();setInterval(load,500);
+loadLog();setInterval(loadLog,3000);
 </script></body></html>)HTML";

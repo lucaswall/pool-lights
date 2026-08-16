@@ -12,16 +12,18 @@
 
 class PacketQueue {
  public:
-  void push(const uint8_t *packet) {
+  // False means the queue was full and the oldest command was discarded to make room.
+  bool push(const uint8_t *packet) {
     memcpy(_slots[_head], packet, V2_PACKET_LEN);
     _head = next(_head);
     if (_count == PACKET_QUEUE_LEN) {
       // Full: drop the oldest rather than the newest, which is the one that reflects what
       // somebody just asked for.
       _tail = next(_tail);
-    } else {
-      _count++;
+      return false;
     }
+    _count++;
+    return true;
   }
 
   bool pop(uint8_t *out) {

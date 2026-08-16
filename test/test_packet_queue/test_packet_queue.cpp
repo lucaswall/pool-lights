@@ -71,11 +71,25 @@ static void survives_wrapping(void) {
   TEST_ASSERT_FALSE(queue.pop(out));
 }
 
+// A dropped command should not be silent: it is the difference between "the light
+// ignored me" and "we never sent it".
+static void push_reports_when_it_evicts(void) {
+  PacketQueue queue;
+  uint8_t packet[V2_PACKET_LEN];
+  for (uint8_t i = 0; i < PACKET_QUEUE_LEN; i++) {
+    fill(packet, i);
+    TEST_ASSERT_TRUE(queue.push(packet));
+  }
+  fill(packet, 99);
+  TEST_ASSERT_FALSE(queue.push(packet));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(empty_queue_yields_nothing);
   RUN_TEST(holds_several_commands_in_order);
   RUN_TEST(overflow_drops_the_oldest);
   RUN_TEST(survives_wrapping);
+  RUN_TEST(push_reports_when_it_evicts);
   return UNITY_END();
 }

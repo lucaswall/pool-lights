@@ -75,10 +75,12 @@ OTA, so one bad flash puts you back on USB.
 
 `make help` lists every target.
 
-The board serves its recent console output at `/log`, kept in a small ring buffer, because
-once it is in a case there is no USB to read. That buffer is RAM, so it starts empty after
-a restart — the boot banner reports `reset reason`, which is what distinguishes a crash
-from a power cut.
+The web UI shows the recent console output live, and serves it raw at `/log`, because once
+the board is in a case there is no USB to read. Lines are stamped with uptime, consecutive
+repeats collapse to `(xN)` so one retry loop cannot evict everything else, and free heap is
+reported whenever it reaches a new low — a healthy board stays quiet, a leaking one shows
+a steady descent. The buffer is RAM, so it starts empty after a restart; the boot banner
+reports `reset reason`, which distinguishes a crash from a power cut.
 
 Reach it by IP rather than `pool-lights.local` if a lookup ever seems to hang: the ESP8266
 mDNS responder answers `A` queries but ignores `AAAA` entirely, without even a negative

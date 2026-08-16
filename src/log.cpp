@@ -13,7 +13,7 @@ void logLine(const char *fmt, ...) {
   va_end(args);
 
   Serial.println(line);
-  buffer.push(line);
+  buffer.push(millis() / 1000, line);
 }
 
 const LogBuffer &logBuffer() { return buffer; }
