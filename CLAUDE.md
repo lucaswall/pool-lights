@@ -132,7 +132,8 @@ milight-hub documents it causing stack smashing and watchdog resets.
 
 ## Conventions
 
-**`docs/code-standards.md` is binding on every change.** Read it before writing code.
+**`docs/code-standards.md` is binding on every change.** Read it before writing code,
+and `docs/architecture.md` before adding a component.
 The rules that get broken most often:
 
 - **Minimal.** Smallest thing that works. No abstraction or option for a use case that
