@@ -83,6 +83,32 @@ Three things that will bite an implementer:
 Still unobserved: commands `0x03`/`0x04`, the FUT092-style separate kelvin and saturation.
 This remote uses the combined `0x07` instead.
 
+### The receiver ignores everything while the light is off
+
+Measured, not documented anywhere upstream: **colour and brightness commands sent to a
+light that is off are discarded.** They are not queued and not applied on the next power
+on — the receiver simply drops them, and a subsequent ON restores whatever colour and
+brightness it last held.
+
+The consequence is a specific, repeatable bug in anything that turns a light on and sets
+its appearance in one go, which is what every Home Assistant scene and automation does:
+
+```
+off -> [colour blue] [brightness 100] [on]     the light comes up in its OLD colour
+off -> [on] [colour blue] [brightness 100]     the light comes up blue
+```
+
+Run the first form twice and the second run works, because by then the light is on. That
+is what the symptom looks like from the outside: an automation that "needs running twice".
+
+So a command sequence has to wake the light before dressing it. The cost is a brief flash
+of the previous colour, which is only worth paying when the light was actually off —
+`HaMqtt::onMessage` keeps the attributes-first order when it is already on.
+
+Worse than the visible symptom: a bridge that records what it *sent* will believe the new
+colour took effect. On a one-way protocol nothing ever corrects that, so Home Assistant
+sits there showing blue while the light is red.
+
 ## Sniffing, and its caveats
 
 `make sniff` listens and reports packets from other remotes. That is how the identity is
