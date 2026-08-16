@@ -10,6 +10,7 @@
 
 #include "control.h"
 #include "netid.h"
+#include "timing.h"
 #include "radio_link.h"
 #include "secrets.h"
 #include "net.h"
@@ -18,6 +19,15 @@
 // GPIO15, which must be low at reset and would stop the board booting.
 static const uint8_t PIN_CE = 4;
 static const uint8_t PIN_CSN = 5;
+
+// Boot demo: turn the light on and cycle colours, which are the only thing readable at a
+// glance in daylight. Kept as a standing proof of life until the web UI replaces it.
+// Note it seizes the light on every boot — fine on the bench, not for the permanent
+// install (P5).
+static const uint32_t DEMO_INTERVAL_MS = 2000;
+static const uint8_t DEMO_HUES[] = {0x00, 0x55, 0xAB};
+static uint32_t lastDemo = 0;
+static uint8_t demoIx = 0;
 
 static char host[NETID_LEN];
 static Net net;
@@ -80,7 +90,8 @@ void setup() {
   }
 
   net.begin(host, WIFI_SSID, WIFI_PASSWORD, OTA_PASSWORD);
-  Serial.println(F("ready. '?' for keys."));
+  control.turnOn();
+  Serial.println(F("ready. '?' for keys. Cycling R/G/B."));
 }
 
 void loop() {
@@ -99,6 +110,13 @@ void loop() {
   if (control.state().dirty()) {
     control.state().clearDirty();
     reportState();
+  }
+
+  const uint32_t now = millis();
+  if (elapsed(now, lastDemo, DEMO_INTERVAL_MS)) {
+    lastDemo = now;
+    control.setHue(DEMO_HUES[demoIx]);
+    demoIx = (uint8_t)((demoIx + 1) % (sizeof(DEMO_HUES) / sizeof(DEMO_HUES[0])));
   }
 
   if (Serial.available()) {
