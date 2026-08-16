@@ -61,14 +61,25 @@ void setup() {
 
   SPI.begin();
 
-  bool passed = false;
-  for (uint8_t i = 0; i < sizeof(SPI_HZ) / sizeof(SPI_HZ[0]) && !passed; i++) {
-    passed = probe(SPI_HZ[i]);
+  uint32_t passedAt = 0;
+  for (uint8_t i = 0; i < sizeof(SPI_HZ) / sizeof(SPI_HZ[0]) && passedAt == 0; i++) {
+    if (probe(SPI_HZ[i])) {
+      passedAt = SPI_HZ[i];
+    }
   }
 
   Serial.println();
-  Serial.println(passed ? F("RESULT: PASS — radio is wired and answering")
-                        : F("RESULT: FAIL — see the fault above. Wiring or power, not code."));
+  if (passedAt == SPI_HZ[0]) {
+    Serial.println(F("RESULT: PASS — radio is wired and answering at the full clock"));
+  } else if (passedAt > 0) {
+    // The firmware and the sniffer both run at the default 10 MHz, so a pass only at the
+    // fallback speed is a warning, not a clean bill of health.
+    Serial.printf("RESULT: MARGINAL — passed only at %lu Hz, but the firmware runs at "
+                  "%lu Hz. Shorten the leads.\n",
+                  (unsigned long)passedAt, (unsigned long)SPI_HZ[0]);
+  } else {
+    Serial.println(F("RESULT: FAIL — see the fault above. Wiring or power, not code."));
+  }
 }
 
 void loop() {

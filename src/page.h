@@ -114,13 +114,18 @@ footer a{color:var(--accent);text-decoration:none}
 <footer><span id="foot">connecting…</span><br><a href="/status">status</a> · <a href="/errors">faults</a> · <a href="/log">raw log</a></footer>
 </main><script>
 const $=i=>document.getElementById(i);
-let ver=-1, held=0, fails=0;
+let ver=-1, held=0, fails=0, pending=false;
 
 // Ignore polled state for a moment after a local move: the radio burst takes a few
 // hundred ms, so an in-flight poll would otherwise snap the slider back under the thumb.
 const hold=()=>held=Date.now()+1200;
 
-function cmd(q){hold();fetch('/api/set?'+q,{method:'POST'}).then(load).catch(()=>{})}
+function cmd(q){
+  hold();
+  fetch('/api/set?'+q,{method:'POST'})
+    .then(r=>{if(!r.ok)throw 0;return load()})
+    .catch(()=>{document.body.classList.add('stale')});
+}
 
 for(let i=0;i<5;i++){
   const b=document.createElement('button');
@@ -154,12 +159,22 @@ function render(s){
   $('swatch').style.background=s.on?(s.mode==='white'?'#ffe9c4':hsl(s.hue,s.saturation)):'#000';
   for(let i=0;i<5;i++)$('fx'+i).className=(s.effect===i?'sel':'');
 
+  // Deferred rather than dropped: skipping the resync inside the hold window used to
+  // leave the thumb permanently where the finger left it while the light moved on.
   if(Date.now()>held){
     $('hue').value=s.hue;$('lhue').textContent=s.hue;
     $('bright').value=s.brightness;$('lbright').textContent=s.brightness;
     const satVal=s.mode==='white'?s.kelvin:s.saturation;
     $('sat').value=satVal;$('lsat').textContent=satVal;
+    pending=false;
+  }else{
+    pending=true;
   }
+}
+
+// Outside render(), which only runs when the version changes — an idle light would
+// otherwise freeze uptime, RSSI and heap at their page-load values forever.
+function foot(s){
   $('foot').textContent=s.host+' · '+s.ip+' · '+s.rssi+' dBm · up '+s.uptime+
     's · heap '+s.heap;
 }
@@ -182,7 +197,8 @@ function loadLog(){
 function load(){
   fetch('/api/state').then(r=>r.json()).then(s=>{
     fails=0;document.body.classList.remove('stale');
-    if(s.version!==ver){ver=s.version;render(s)}
+    if(s.version!==ver||pending&&Date.now()>held){ver=s.version;render(s)}
+    foot(s);
   }).catch(()=>{
     if(++fails>2)document.body.classList.add('stale');
   });

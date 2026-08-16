@@ -8,7 +8,10 @@
 // what keeps everything above this line testable without a radio.
 struct PacketSink {
   virtual ~PacketSink() {}
-  virtual void send(const uint8_t *packet) = 0;
+  // False means the packet was discarded rather than queued, so the caller must not
+  // record its effect: optimistic state plus a lossy queue is drift the one-way protocol
+  // has no way to correct.
+  virtual bool send(const uint8_t *packet) = 0;
 };
 
 // The facade. Speaks intent and protocol units — deliberately knows nothing about MQTT,
@@ -26,7 +29,9 @@ class Control {
   void setSaturationOrKelvin(uint8_t percent) {
     issue(V2_CMD_SAT_KELVIN, clampPercent(percent));
   }
-  void setEffect(uint8_t effect) { issue(V2_CMD_MODE, effect); }
+  void setEffect(uint8_t effect) {
+    issue(V2_CMD_MODE, effect > V2_EFFECT_MAX ? V2_EFFECT_MAX : effect);
+  }
 
   // The speed keys ride on the on/off command with their own arguments rather than being
   // commands of their own. They adjust the running effect, not the power state.
@@ -41,6 +46,8 @@ class Control {
     _state.apply(packet);
   }
 
+  void tick(uint32_t nowMs) { _state.tick(nowMs); }
+
   LightState &state() { return _state; }
   const LightState &state() const { return _state; }
 
@@ -50,7 +57,9 @@ class Control {
   void issue(uint8_t command, uint8_t arg) {
     uint8_t raw[V2_PACKET_LEN];
     _encoder.encode(command, arg, raw);
-    _sink.send(raw);
+    if (!_sink.send(raw)) {
+      return;
+    }
 
     // Our own commands move state through the same path as overheard ones.
     Packet packet;

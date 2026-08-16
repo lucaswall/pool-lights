@@ -94,6 +94,9 @@ inline void v2Encode(uint8_t *packet) {
 #define V2_ARG_SPEED_UP 0x12
 #define V2_ARG_SPEED_DOWN 0x13
 
+// Five built-in effects, 0x00-0x04.
+#define V2_EFFECT_MAX 0x04
+
 // Bit 7 marks a held key; the argument still says which one.
 #define V2_HELD 0x80
 

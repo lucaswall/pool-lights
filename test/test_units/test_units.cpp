@@ -59,6 +59,28 @@ static void protocol_maps_back_to_mireds(void) {
   TEST_ASSERT_EQUAL_UINT16(HA_MIRED_MAX, protocolToMireds(100));
 }
 
+// Home Assistant's colour wheel has a desaturated centre, so "white" arrives as an RGB
+// triple. Hue alone cannot express it — saturation is what distinguishes white from red.
+static void saturation_from_rgb(void) {
+  TEST_ASSERT_EQUAL_UINT8(100, rgbSaturation(255, 0, 0));
+  TEST_ASSERT_EQUAL_UINT8(0, rgbSaturation(255, 255, 255));
+  TEST_ASSERT_EQUAL_UINT8(0, rgbSaturation(0, 0, 0));
+  TEST_ASSERT_UINT8_WITHIN(2, 50, rgbSaturation(255, 128, 128));
+}
+
+// B4: the clamped endpoints cannot tell a correct mapping from an inverted one. These
+// interior points can, in both directions.
+static void mireds_interior_points_are_pinned(void) {
+  TEST_ASSERT_EQUAL_UINT8(14, miredsToProtocol(200));
+  TEST_ASSERT_EQUAL_UINT16(326, protocolToMireds(50));
+}
+
+static void mireds_round_trip(void) {
+  for (uint8_t v = 0; v <= 100; v++) {
+    TEST_ASSERT_EQUAL_UINT8(v, miredsToProtocol(protocolToMireds(v)));
+  }
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(primaries_map_to_the_protocol_hues);
@@ -68,5 +90,8 @@ int main(void) {
   RUN_TEST(mireds_span_the_protocol_scale);
   RUN_TEST(mireds_clamp_outside_the_declared_range);
   RUN_TEST(protocol_maps_back_to_mireds);
+  RUN_TEST(saturation_from_rgb);
+  RUN_TEST(mireds_interior_points_are_pinned);
+  RUN_TEST(mireds_round_trip);
   return UNITY_END();
 }

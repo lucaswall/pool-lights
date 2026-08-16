@@ -9,10 +9,15 @@ void tearDown(void) {}
 // The point of injecting the sink: the whole control layer is testable with no radio.
 class FakeSink : public PacketSink {
  public:
-  void send(const uint8_t *packet) override {
+  bool send(const uint8_t *packet) override {
+    if (!accept) {
+      return false;
+    }
     memcpy(last, packet, V2_PACKET_LEN);
     count++;
+    return true;
   }
+  bool accept = true;
   uint8_t last[V2_PACKET_LEN] = {0};
   int count = 0;
 
@@ -126,6 +131,60 @@ static void speed_does_not_turn_the_light_off(void) {
   TEST_ASSERT_TRUE(control.state().on());
 }
 
+// B5: neither of these had any test, so the command each issues was unpinned.
+static void effect_is_clamped_and_uses_the_mode_command(void) {
+  FakeSink sink;
+  Control control(sink, 0xabcd, 1);
+  control.setEffect(3);
+  TEST_ASSERT_EQUAL_HEX8(V2_CMD_MODE, sink.decoded().command);
+  TEST_ASSERT_EQUAL_UINT8(3, sink.decoded().argument);
+
+  control.setEffect(200);
+  TEST_ASSERT_EQUAL_UINT8(V2_EFFECT_MAX, sink.decoded().argument);
+}
+
+static void saturation_or_kelvin_clamps_and_follows_the_mode(void) {
+  FakeSink sink;
+  Control control(sink, 0xabcd, 1);
+
+  control.setHue(0x40);
+  control.setSaturationOrKelvin(200);
+  TEST_ASSERT_EQUAL_HEX8(V2_CMD_SAT_KELVIN, sink.decoded().command);
+  TEST_ASSERT_EQUAL_UINT8(100, sink.decoded().argument);
+  TEST_ASSERT_EQUAL_UINT8(100, control.state().saturation());
+
+  control.setWhite();
+  control.setSaturationOrKelvin(30);
+  TEST_ASSERT_EQUAL_UINT8(30, control.state().kelvin());
+}
+
+// B2: the group half of the identity filter was never exercised.
+static void ignores_other_groups(void) {
+  FakeSink sink;
+  Control control(sink, 0xabcd, 1);
+  control.turnOn();
+
+  Packet other;
+  other.deviceId = 0xabcd;
+  other.group = 2;
+  other.argument = v2OffArg(2);
+  other.command = V2_CMD_ON_OFF;
+  other.sequence = 0;
+  other.held = false;
+  control.onReceived(other);
+
+  TEST_ASSERT_TRUE(control.state().on());
+}
+
+// A command the radio discarded must not be recorded as having happened.
+static void a_rejected_command_does_not_move_state(void) {
+  FakeSink sink;
+  Control control(sink, 0xabcd, 1);
+  sink.accept = false;
+  control.turnOn();
+  TEST_ASSERT_FALSE(control.state().on());
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(sends_on_and_updates_its_own_state);
@@ -136,5 +195,9 @@ int main(void) {
   RUN_TEST(ignores_other_devices);
   RUN_TEST(effect_speed_buttons);
   RUN_TEST(speed_does_not_turn_the_light_off);
+  RUN_TEST(effect_is_clamped_and_uses_the_mode_command);
+  RUN_TEST(saturation_or_kelvin_clamps_and_follows_the_mode);
+  RUN_TEST(ignores_other_groups);
+  RUN_TEST(a_rejected_command_does_not_move_state);
   return UNITY_END();
 }

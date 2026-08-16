@@ -139,6 +139,11 @@ void WebUi::handleStatus() {
   _server.send(200, "text/plain", body);
 }
 
+uint8_t WebUi::argByte(const char *name, long max) {
+  const long value = _server.arg(name).toInt();
+  return (uint8_t)(value < 0 ? 0 : (value > max ? max : value));
+}
+
 void WebUi::handleSet() {
   // Every parameter is optional and applied if present, so the page can send one control
   // per request without needing an endpoint each.
@@ -151,17 +156,19 @@ void WebUi::handleSet() {
   if (_server.hasArg("white")) {
     _control.setWhite();
   }
+  // Clamped before narrowing: casting to uint8_t first wraps 300 to 44 rather than
+  // saturating, and the setters' own clamps never see the original value.
   if (_server.hasArg("hue")) {
-    _control.setHue((uint8_t)_server.arg("hue").toInt());
+    _control.setHue(argByte("hue", 255));
   }
   if (_server.hasArg("brightness")) {
-    _control.setBrightness((uint8_t)_server.arg("brightness").toInt());
+    _control.setBrightness(argByte("brightness", 100));
   }
   if (_server.hasArg("sat")) {
-    _control.setSaturationOrKelvin((uint8_t)_server.arg("sat").toInt());
+    _control.setSaturationOrKelvin(argByte("sat", 100));
   }
   if (_server.hasArg("effect")) {
-    _control.setEffect((uint8_t)_server.arg("effect").toInt());
+    _control.setEffect(argByte("effect", V2_EFFECT_MAX));
   }
   handleState();
 }

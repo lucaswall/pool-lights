@@ -20,7 +20,7 @@ class RadioLink : public PacketSink {
   // and stops a burst happening inside a web request or an MQTT callback. Queued rather
   // than held in one slot: a single Home Assistant message can carry colour, brightness
   // and power, and each would otherwise overwrite the one before it.
-  void send(const uint8_t *packet) override;
+  bool send(const uint8_t *packet) override;
 
   void loop();
 

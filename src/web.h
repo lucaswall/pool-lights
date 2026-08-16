@@ -24,6 +24,7 @@ class WebUi {
   void start();
   void handleState();
   void handleSet();
+  uint8_t argByte(const char *name, long max);
   void handleLog();
   void handleErrors();
   void handleStatus();

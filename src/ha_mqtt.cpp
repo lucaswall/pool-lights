@@ -153,7 +153,9 @@ void HaMqtt::publishState() {
 
   JsonDocument doc;
   doc["state"] = s.on() ? "ON" : "OFF";
-  doc["brightness"] = s.brightness();
+  // Night mode is a glow below anything the brightness bar can select, so reporting the
+  // last commanded percentage would show a bright light that is nearly dark.
+  doc["brightness"] = s.night() ? 1 : s.brightness();
   doc["effect"] = String(s.effect());
 
   if (s.mode() == COLOUR_MODE_WHITE) {
@@ -195,7 +197,14 @@ void HaMqtt::onMessage(const char *topic, const uint8_t *payload, unsigned int l
   // colour" request does not arrive as on-then-change and visibly step through the old
   // colour first.
   if (doc["color"].is<JsonObject>()) {
-    _control.setHue(rgbToHue(doc["color"]["r"], doc["color"]["g"], doc["color"]["b"]));
+    const uint8_t r = doc["color"]["r"], g = doc["color"]["g"], b = doc["color"]["b"];
+    // Every grey has hue 0, which is red. A near-white request belongs on the white
+    // channel — which is what the W key on the remote selects — not on a washed-out hue.
+    if (rgbSaturation(r, g, b) < WHITE_SATURATION_THRESHOLD) {
+      _control.setWhite();
+    } else {
+      _control.setHue(rgbToHue(r, g, b));
+    }
   }
   if (doc["color_temp"].is<uint16_t>()) {
     _control.setWhite();

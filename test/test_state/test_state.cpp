@@ -116,6 +116,91 @@ static void two_readers_are_independent(void) {
   TEST_ASSERT_TRUE(state.version() != readerB);
 }
 
+// The held bit was consulted only after the special arguments had already returned, so a
+// long press of ON — argument = groupId — fell through into the night-mode branch.
+static void held_on_is_not_night_mode(void) {
+  LightState state;
+  state.apply(cmd(V2_CMD_ON_OFF, v2OnArg(1), true));
+  TEST_ASSERT_TRUE(state.on());
+  TEST_ASSERT_FALSE(state.night());
+}
+
+static void only_a_held_off_is_night_mode(void) {
+  LightState state;
+  state.apply(cmd(V2_CMD_ON_OFF, v2OffArg(1), true));
+  TEST_ASSERT_TRUE(state.night());
+}
+
+// Held white mode and held speed keys must not be read as night mode either.
+static void held_special_args_are_not_night_mode(void) {
+  LightState state;
+  state.apply(cmd(V2_CMD_ON_OFF, V2_ARG_WHITE_MODE, true));
+  TEST_ASSERT_FALSE(state.night());
+  TEST_ASSERT_EQUAL(COLOUR_MODE_WHITE, state.mode());
+}
+
+// A held speed key is a sleep timer: the light switches itself off later and the protocol
+// never says so. Modelled from the documented durations.
+static void held_speed_keys_arm_a_sleep_timer(void) {
+  LightState state;
+  state.apply(cmd(V2_CMD_ON_OFF, v2OnArg(1)));
+  state.apply(cmd(V2_CMD_ON_OFF, V2_ARG_SPEED_DOWN, true));   // 60 s
+
+  state.tick(1000);
+  state.tick(59000);
+  TEST_ASSERT_TRUE(state.on());
+  state.tick(62000);
+  TEST_ASSERT_FALSE(state.on());
+}
+
+static void the_long_timer_is_ten_minutes(void) {
+  LightState state;
+  state.apply(cmd(V2_CMD_ON_OFF, v2OnArg(1)));
+  state.apply(cmd(V2_CMD_ON_OFF, V2_ARG_SPEED_UP, true));     // 10 min
+  state.tick(0);
+  state.tick(9UL * 60 * 1000);
+  TEST_ASSERT_TRUE(state.on());
+  state.tick(11UL * 60 * 1000);
+  TEST_ASSERT_FALSE(state.on());
+}
+
+// Pressing on or off cancels a running timer.
+static void on_or_off_cancels_the_timer(void) {
+  LightState state;
+  state.apply(cmd(V2_CMD_ON_OFF, v2OnArg(1)));
+  state.apply(cmd(V2_CMD_ON_OFF, V2_ARG_SPEED_DOWN, true));
+  state.tick(0);
+  state.apply(cmd(V2_CMD_ON_OFF, v2OnArg(1)));
+  state.tick(120000);
+  TEST_ASSERT_TRUE(state.on());
+}
+
+// A short press of a speed key adjusts effect speed and must not arm anything.
+static void a_short_speed_press_arms_nothing(void) {
+  LightState state;
+  state.apply(cmd(V2_CMD_ON_OFF, v2OnArg(1)));
+  state.apply(cmd(V2_CMD_ON_OFF, V2_ARG_SPEED_DOWN));
+  state.tick(0);
+  state.tick(120000);
+  TEST_ASSERT_TRUE(state.on());
+}
+
+// B6: the 8/9 split between an ON argument and an OFF argument is the only thing
+// separating them, and every other test uses group 1.
+static void group_boundaries(void) {
+  LightState low;
+  low.apply(cmd(V2_CMD_ON_OFF, v2OnArg(0)));
+  TEST_ASSERT_TRUE(low.on());
+  low.apply(cmd(V2_CMD_ON_OFF, v2OffArg(0)));
+  TEST_ASSERT_FALSE(low.on());
+
+  LightState high;
+  high.apply(cmd(V2_CMD_ON_OFF, v2OnArg(8)));    // 0x08
+  TEST_ASSERT_TRUE(high.on());
+  high.apply(cmd(V2_CMD_ON_OFF, v2OffArg(8)));   // 0x11
+  TEST_ASSERT_FALSE(high.on());
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(starts_off);
@@ -128,5 +213,13 @@ int main(void) {
   RUN_TEST(effect_is_tracked);
   RUN_TEST(version_advances_only_on_real_changes);
   RUN_TEST(two_readers_are_independent);
+  RUN_TEST(held_on_is_not_night_mode);
+  RUN_TEST(only_a_held_off_is_night_mode);
+  RUN_TEST(held_special_args_are_not_night_mode);
+  RUN_TEST(held_speed_keys_arm_a_sleep_timer);
+  RUN_TEST(the_long_timer_is_ten_minutes);
+  RUN_TEST(on_or_off_cancels_the_timer);
+  RUN_TEST(a_short_speed_press_arms_nothing);
+  RUN_TEST(group_boundaries);
   return UNITY_END();
 }

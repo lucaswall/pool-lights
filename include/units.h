@@ -36,6 +36,21 @@ inline uint8_t rgbToHue(uint8_t r, uint8_t g, uint8_t b) {
   return (uint8_t)((degrees * 255 + 180) / 360);
 }
 
+// Saturation as a percentage, on the protocol's own 0-100 scale. Hue alone cannot
+// represent white: every grey has hue 0, which is red.
+inline uint8_t rgbSaturation(uint8_t r, uint8_t g, uint8_t b) {
+  const uint8_t max = r > g ? (r > b ? r : b) : (g > b ? g : b);
+  const uint8_t min = r < g ? (r < b ? r : b) : (g < b ? g : b);
+  if (max == 0) {
+    return 0;
+  }
+  return (uint8_t)(((uint32_t)(max - min) * 100 + max / 2) / max);
+}
+
+// Below this, a requested colour is close enough to white that the white channel is a
+// better answer than a washed-out hue.
+#define WHITE_SATURATION_THRESHOLD 12
+
 inline void hueToRgb(uint8_t hue, uint8_t *r, uint8_t *g, uint8_t *b) {
   // The modulo is load-bearing: hue 255 scales to exactly 360, and without wrapping it
   // to 0 the top of the circle lands in the magenta ramp instead of back on red.

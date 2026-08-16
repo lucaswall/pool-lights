@@ -10,6 +10,7 @@
 #include <Arduino.h>
 #include <RF24.h>
 #include <SPI.h>
+#include <string.h>
 
 #include "PL1167.h"
 #include "milight_wire.h"
@@ -36,6 +37,7 @@ static RF24 rf24(PIN_CE, PIN_CSN);
 static PL1167 radio(rf24);
 static uint8_t syncword[MILIGHT_SYNCWORD_LEN];
 static uint32_t packets = 0;
+static uint8_t lastRaw[V2_PACKET_LEN] = {0};
 static uint32_t lastHop = 0;
 static uint8_t channelIx = 0;
 
@@ -100,7 +102,14 @@ void loop() {
 
   uint8_t payload[V2_PACKET_LEN];
   const uint8_t length = radio.receive(CHANNELS[channelIx], payload, sizeof(payload));
-  if (length > 0) {
-    report(payload, length);
+  if (length == 0) {
+    return;
   }
+  // One press is sent dozens of times. Reporting every copy buries the capture, and the
+  // copies are byte-identical, so comparing against the last frame is enough.
+  if (length == V2_PACKET_LEN && memcmp(payload, lastRaw, V2_PACKET_LEN) == 0) {
+    return;
+  }
+  memcpy(lastRaw, payload, length > V2_PACKET_LEN ? V2_PACKET_LEN : length);
+  report(payload, length);
 }

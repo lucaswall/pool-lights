@@ -2,6 +2,10 @@
 
 #include "packet.h"
 
+// The documented durations of the two sleep timers on the S- and S+ keys.
+#define SLEEP_SHORT_MS 60000UL
+#define SLEEP_LONG_MS 600000UL
+
 enum ColourMode {
   COLOUR_MODE_RGB,
   COLOUR_MODE_WHITE,
@@ -59,6 +63,24 @@ class LightState {
   // are behind without competing for a single flag.
   uint32_t version() const { return _version; }
 
+  // Drives the sleep timers armed by a held speed key. Time is passed in rather than read
+  // here, so this stays pure. Safe to call every loop.
+  void tick(uint32_t nowMs) {
+    if (_timerMs == 0) {
+      return;
+    }
+    if (!_timerStarted) {
+      _timerStarted = true;
+      _timerStartMs = nowMs;
+      return;
+    }
+    if ((uint32_t)(nowMs - _timerStartMs) >= _timerMs) {
+      cancelTimer();
+      set(_on, false);
+      clearNight();
+    }
+  }
+
  private:
   void applyOnOff(const Packet &packet) {
     // These arguments are all above the group range, so testing the group arithmetic
@@ -70,17 +92,31 @@ class LightState {
       return;
     }
     if (packet.argument == V2_ARG_SPEED_UP || packet.argument == V2_ARG_SPEED_DOWN) {
+      // Held, these are sleep timers rather than speed adjustments: the light switches
+      // itself off after the interval and the protocol never tells us it happened.
+      if (packet.held) {
+        _timerMs = packet.argument == V2_ARG_SPEED_DOWN ? SLEEP_SHORT_MS : SLEEP_LONG_MS;
+        _timerStarted = false;
+      }
       set(_on, true);
       return;
     }
-    // A held OFF is night mode: a dim glow below the normal minimum, not off.
-    if (packet.held) {
+    // Night mode is a held OFF specifically. Testing `held` alone here — which is what
+    // upstream does — also swallows a held ON, whose effect is undocumented.
+    if (packet.held && packet.argument > 8) {
       set(_on, true);
       set(_night, true);
+      cancelTimer();
       return;
     }
     set(_on, packet.argument <= 8);
     clearNight();
+    cancelTimer();   // pressing on or off cancels a running sleep timer
+  }
+
+  void cancelTimer() {
+    _timerMs = 0;
+    _timerStarted = false;
   }
 
   void clearNight() { set(_night, false); }
@@ -104,4 +140,7 @@ class LightState {
   uint8_t _kelvin = 50;
   uint8_t _effect = 0;
   uint32_t _version = 0;
+  uint32_t _timerMs = 0;
+  uint32_t _timerStartMs = 0;
+  bool _timerStarted = false;
 };

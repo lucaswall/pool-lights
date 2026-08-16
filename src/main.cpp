@@ -90,6 +90,8 @@ void setup() {
 }
 
 void loop() {
+  const uint32_t now = millis();
+
   net.loop();   // before web: this is what starts mDNS, which web then advertises on
   web.loop();
   mqtt.loop();
@@ -104,6 +106,8 @@ void loop() {
     }
   }
 
+  control.tick(now);
+
   Packet packet;
   if (radio.take(&packet)) {
     control.onReceived(packet);
@@ -113,7 +117,6 @@ void loop() {
                   packet.argument, packet.deviceId, packet.group);
   }
 
-  const uint32_t now = millis();
   if (elapsed(now, lastHealth, HEALTH_MS)) {
     lastHealth = now;
     logLine("health    : heap %lu low %lu rssi %d wifi %s mqtt %s light %s faults %u",
