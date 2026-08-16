@@ -40,6 +40,14 @@ bool PL1167::configure() {
   return true;
 }
 
+bool PL1167::failureDetected() {
+  if (!_radio.failureDetected) {
+    return false;
+  }
+  _radio.failureDetected = 0;
+  return true;
+}
+
 uint8_t PL1167::receive(uint8_t channel, uint8_t *payload, uint8_t payloadCapacity) {
   if (channel != _channel) {
     _channel = channel;

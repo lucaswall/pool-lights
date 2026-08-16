@@ -40,6 +40,15 @@ bool RadioLink::send(const uint8_t *packet) {
 }
 
 void RadioLink::loop() {
+  // Checked before anything else: once the chip has stopped answering, transmitting and
+  // listening both fail silently, and re-running begin() is the documented recovery.
+  if (_pl1167.failureDetected()) {
+    logError("radio     : chip stopped responding, reinitialising");
+    _pl1167.begin(_syncword, V2_PACKET_LEN);
+    _channelIx = 0;
+    return;
+  }
+
   if (!_outgoing.empty()) {
     transmitNext();
   }

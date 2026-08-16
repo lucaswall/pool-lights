@@ -27,6 +27,11 @@ class PL1167 {
   // False means the radio itself reported the transmission failed.
   bool transmit(uint8_t channel, const uint8_t *payload, uint8_t payloadLength);
 
+  // RF24 raises this when the chip stops answering at all. Reads and clears it. Unlike a
+  // transmit timeout it also catches a radio that has wedged while listening, which
+  // otherwise looks exactly like a quiet room.
+  bool failureDetected();
+
  private:
   bool configure();
 
