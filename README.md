@@ -10,10 +10,11 @@ emulates it — leaving the physical remote working exactly as before.
 
 ## Status
 
-Rung 7 of 7, partly. The board joins WiFi, accepts OTA updates, passes a radio self-test,
-sniffs a MiLight remote's identity off the air, and **drives the real light** — on/off,
-colour, brightness, white mode. What is left is the Home Assistant half: MQTT, discovery,
-and a permanent install. See
+Rung 7 of 7. The board joins WiFi, accepts OTA updates, sniffs a MiLight remote's identity
+off the air, **drives the real light**, and tracks state in both directions — including
+presses on the physical remote. It serves a mobile-first debug UI at
+`http://<hostname>.local/`. What is left is Home Assistant: MQTT, discovery, and a
+permanent install. See
 [`docs/roadmap.md`](docs/roadmap.md) for the ladder and [`docs/plan.md`](docs/plan.md) for
 the phase plan with exit criteria.
 
@@ -59,8 +60,8 @@ variant was compiled.
 
 ```
 platformio.ini      two envs: d1 (hardware) and native (tests)
-src/                firmware, radio self-test, sniffer — one env each
-lib/PL1167/         PL1167 receive path on the NRF24
+src/                firmware and the debug web UI; radio self-test and sniffer, one env each
+lib/PL1167/         PL1167 transceiver on the NRF24
 include/            header-only pure logic, unit tested
 test/               desktop unit tests (pio test -e native)
 tools/              serial capture, privacy scan

@@ -90,18 +90,30 @@ static void effect_is_tracked(void) {
   TEST_ASSERT_EQUAL_UINT8(3, state.effect());
 }
 
-// The dirty flag is how the publisher knows something changed without diffing.
-static void dirty_tracks_real_changes(void) {
+// A version counter rather than a dirty flag: the serial log and the web UI both need to
+// know whether they are behind, and a single bool cannot serve two readers.
+static void version_advances_only_on_real_changes(void) {
   LightState state;
-  state.clearDirty();
-  TEST_ASSERT_FALSE(state.dirty());
+  const uint32_t start = state.version();
 
   state.apply(cmd(V2_CMD_ON_OFF, v2OnArg(1)));
-  TEST_ASSERT_TRUE(state.dirty());
+  const uint32_t afterChange = state.version();
+  TEST_ASSERT_TRUE(afterChange > start);
 
-  state.clearDirty();
   state.apply(cmd(V2_CMD_ON_OFF, v2OnArg(1)));
-  TEST_ASSERT_FALSE(state.dirty());
+  TEST_ASSERT_EQUAL_UINT32(afterChange, state.version());
+}
+
+// Two readers tracking their own last-seen version must not interfere.
+static void two_readers_are_independent(void) {
+  LightState state;
+  uint32_t readerA = state.version();
+  uint32_t readerB = state.version();
+
+  state.apply(cmd(V2_CMD_BRIGHTNESS, 40));
+  TEST_ASSERT_TRUE(state.version() != readerA);
+  readerA = state.version();
+  TEST_ASSERT_TRUE(state.version() != readerB);
 }
 
 int main(void) {
@@ -114,6 +126,7 @@ int main(void) {
   RUN_TEST(sat_kelvin_depends_on_mode);
   RUN_TEST(held_off_is_night_mode);
   RUN_TEST(effect_is_tracked);
-  RUN_TEST(dirty_tracks_real_changes);
+  RUN_TEST(version_advances_only_on_real_changes);
+  RUN_TEST(two_readers_are_independent);
   return UNITY_END();
 }

@@ -55,8 +55,9 @@ class LightState {
   uint8_t kelvin() const { return _kelvin; }
   uint8_t effect() const { return _effect; }
 
-  bool dirty() const { return _dirty; }
-  void clearDirty() { _dirty = false; }
+  // Readers keep their own last-seen value, so any number of them can tell whether they
+  // are behind without competing for a single flag.
+  uint32_t version() const { return _version; }
 
  private:
   void applyOnOff(const Packet &packet) {
@@ -90,7 +91,7 @@ class LightState {
   void set(T &field, T value) {
     if (field != value) {
       field = value;
-      _dirty = true;
+      _version++;
     }
   }
 
@@ -102,5 +103,5 @@ class LightState {
   uint8_t _saturation = 100;
   uint8_t _kelvin = 50;
   uint8_t _effect = 0;
-  bool _dirty = false;
+  uint32_t _version = 0;
 };

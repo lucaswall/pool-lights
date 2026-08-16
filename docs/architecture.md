@@ -18,13 +18,13 @@ include/            pure, no Arduino headers, unit tested
   encoder.h         Encoder: device id, group, sequence
   state.h           LightState: what the light is doing
   control.h         Control: the facade, header-only so it is testable
-  units.h           UI <-> protocol conversions            (not built yet)
+  units.h           UI <-> protocol conversions            (not needed yet)
 lib/PL1167/         radio PHY
 src/                peripherals and wiring
   radio_link.*      half-duplex arbitration, implements PacketSink
   net.*             WiFi + OTA
+  web.*             the debug UI, and page.h which holds it
   main.cpp          construction and loop, nothing else
-  web.*             the UI                                 (not built yet)
   ha_mqtt.*         discovery and topic translation        (not built yet)
 ```
 
@@ -43,10 +43,10 @@ Updated by exactly one method, `apply(const Packet&)`, so a command we sent and 
 overheard from the physical remote travel the same code path. Tracks a dirty flag so the
 MQTT layer knows when to publish.
 
-**`units.h`** — *not built yet, and deliberately.* A UI speaks RGB triples and colour
-temperature; the protocol speaks a single hue byte and a 0–100 scale. Rounding, clamping
-and the hue wrap at 0/360 are where silent bugs live, so the conversions will be pure
-functions with tests — written when the web UI gives them a caller, not before.
+**`units.h`** — *still not built, and the web UI is why it is not needed.* Its hue control
+is a 0–255 slider, which is exactly what the protocol carries, so nothing is converted and
+nothing can be lost. A conversion layer only becomes necessary when something upstream
+insists on RGB triples or kelvin — Home Assistant will.
 
 **`RadioLink`** — owns the PL1167 and arbitrates the radio, which is half-duplex. Default
 state is listening, because state sync depends on overhearing the remote. An outgoing
@@ -81,9 +81,16 @@ struct PacketSink {
 `RadioLink` implements it on hardware; tests inject a fake and assert on the bytes. One
 virtual call per command is free, and it makes the whole control layer natively testable.
 
-Until a UI exists, `main.cpp` carries a one-key serial console driving the same `Control`
-methods a UI will call. It keeps the send path exercised instead of dead, and it goes when
-the web UI arrives.
+**`WebUi`** — one page, a state endpoint the browser polls twice a second, and one command
+endpoint taking optional parameters. It uses the synchronous server bundled with the core:
+free heap is around 46 KB, the state payload is under 200 bytes, and the radio blocks for a
+few hundred milliseconds per transmit — none of which argues for a second TCP stack and a
+WebSocket. A request arriving mid-burst simply waits. The page is served from PROGMEM and
+is self-contained, because it is opened standing next to the pool where phone signal is
+worst.
+
+`LightState` exposes a version counter rather than a dirty flag: the serial log and the
+browser both need to know whether they are behind, and one bool cannot serve two readers.
 
 ## Home Assistant specifics, for when we get there
 

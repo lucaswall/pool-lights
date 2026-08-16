@@ -1,7 +1,7 @@
 // pool-lights — MiLight bridge.
 //
-// Construction and the loop, nothing else. The behaviour lives in Control (intent and
-// state), RadioLink (the half-duplex radio) and Net (WiFi and OTA).
+// Construction and the loop, nothing else. Behaviour lives in Control (intent and state),
+// RadioLink (the half-duplex radio), Net (WiFi and OTA) and WebUi (the debug interface).
 //
 // Wemos D1 R1: LED_BUILTIN is GPIO2, active low. Never build on GPIO14 — it is HSPI SCK
 // and the radio needs it.
@@ -9,30 +9,23 @@
 #include <Arduino.h>
 
 #include "control.h"
+#include "net.h"
 #include "netid.h"
-#include "timing.h"
 #include "radio_link.h"
 #include "secrets.h"
-#include "net.h"
+#include "web.h"
 
 // CE is a plain strobe outside SPI, so no register test can catch it miswired. CSN avoids
 // GPIO15, which must be low at reset and would stop the board booting.
 static const uint8_t PIN_CE = 4;
 static const uint8_t PIN_CSN = 5;
 
-// Boot demo: turn the light on and cycle colours, which are the only thing readable at a
-// glance in daylight. Kept as a standing proof of life until the web UI replaces it.
-// Note it seizes the light on every boot — fine on the bench, not for the permanent
-// install (P5).
-static const uint32_t DEMO_INTERVAL_MS = 2000;
-static const uint8_t DEMO_HUES[] = {0x00, 0x55, 0xAB};
-static uint32_t lastDemo = 0;
-static uint8_t demoIx = 0;
-
 static char host[NETID_LEN];
 static Net net;
 static RadioLink radio(PIN_CE, PIN_CSN);
 static Control control(radio, MILIGHT_DEVICE_ID, MILIGHT_GROUP);
+static WebUi web(control, host);
+static uint32_t reportedVersion = 0;
 
 static void banner() {
   Serial.println();
@@ -53,27 +46,6 @@ static void reportState() {
                 s.kelvin(), s.effect());
 }
 
-// A keyboard stands in for the web UI until there is one. It exercises the same Control
-// interface the UI will use, so the send path is covered rather than waiting unused.
-static void console(char key) {
-  switch (key) {
-    case 'o': control.turnOn(); break;
-    case 'f': control.turnOff(); break;
-    case 'w': control.setWhite(); break;
-    case 'r': control.setHue(0x00); break;
-    case 'g': control.setHue(0x55); break;
-    case 'b': control.setHue(0xAB); break;
-    case '1': control.setBrightness(10); break;
-    case '9': control.setBrightness(100); break;
-    case 's': reportState(); return;
-    case '?':
-      Serial.println(F("keys: o=on f=off w=white r/g/b=colour 1/9=brightness s=state"));
-      return;
-    default: return;
-  }
-  Serial.printf("sent      : %c\n", key);
-}
-
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);   // active low, so start off
@@ -90,12 +62,11 @@ void setup() {
   }
 
   net.begin(host, WIFI_SSID, WIFI_PASSWORD, OTA_PASSWORD);
-  control.turnOn();
-  Serial.println(F("ready. '?' for keys. Cycling R/G/B."));
 }
 
 void loop() {
-  net.loop();
+  net.loop();   // before web: this is what starts mDNS, which web then advertises on
+  web.loop();
   radio.loop();
 
   Packet packet;
@@ -107,19 +78,8 @@ void loop() {
                   packet.argument, packet.deviceId, packet.group);
   }
 
-  if (control.state().dirty()) {
-    control.state().clearDirty();
+  if (control.state().version() != reportedVersion) {
+    reportedVersion = control.state().version();
     reportState();
-  }
-
-  const uint32_t now = millis();
-  if (elapsed(now, lastDemo, DEMO_INTERVAL_MS)) {
-    lastDemo = now;
-    control.setHue(DEMO_HUES[demoIx]);
-    demoIx = (uint8_t)((demoIx + 1) % (sizeof(DEMO_HUES) / sizeof(DEMO_HUES[0])));
-  }
-
-  if (Serial.available()) {
-    console((char)Serial.read());
   }
 }
