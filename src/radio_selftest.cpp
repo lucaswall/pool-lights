@@ -1,4 +1,4 @@
-// Rung 6 — standalone radio self-test, built by `make radio`.
+// Standalone radio self-test, built by `make radio`.
 //
 // Upstream's firmware discards begin()'s return and never calls isChipConnected(), so an
 // unwired radio looks healthy on WiFi and MQTT and the wiring fault surfaces days later

@@ -52,16 +52,15 @@ changed. Those checks are human, and the plan says so.
 
 ## Workflow
 
-- One rung at a time. Get it verified on hardware, then commit.
 - **Never leave the repository dirty.** Commit and push a completed set of changes before
   moving on. When a new file appears, decide immediately whether it is tracked or
   gitignored, and act — an untracked file sitting in `git status` is a decision not made.
 - **`.gitignore` is the real protection.** Git refuses to stage an ignored file without
   `-f`, and every secret lives in one of three ignored paths. `make check` only catches
   what gitignore cannot: a real address or credential typed into a tracked file. CI runs
-  it on every push. Keep it that small — no pre-commit hook, because while the repository
-  is private a bad commit is still fixable, and the gate that matters is a full `make
-  check` immediately before making it public.
+  it on every push. Keep it that small, and there is no pre-commit hook: while the
+  repository is private a bad commit is still fixable, and the gate that matters is a full
+  `make check` immediately before making it public.
 - No git tags. Use the commit log to find a working state.
 
 ## Serial

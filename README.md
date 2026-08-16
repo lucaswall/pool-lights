@@ -4,71 +4,98 @@ An ESP8266 + NRF24L01+ bridge that puts a 2.4 GHz MiLight / MiBoxer RF light —
 case a pool light with no smart interface of any kind — onto Home Assistant over MQTT.
 
 The light is driven by a MiBoxer RF receiver paired to a handheld remote. It speaks
-neither WiFi nor Zigbee nor infrared, so Home Assistant cannot see it. A small ESP8266
-with a 2.4 GHz radio can: it listens to the existing remote, learns the pairing, and then
-emulates it — leaving the physical remote working exactly as before.
+neither WiFi nor Zigbee nor infrared, so Home Assistant cannot see it. This bridge can:
 
-## Status
+```
+FUT088-style remote ──2.4 GHz RF──┐
+                                  ├──> MiBoxer receiver ──> the light
+   this bridge ───────────────────┘
+        │
+        └── MQTT discovery ──> Home Assistant
+```
 
-Rung 7 of 7. The board joins WiFi, accepts OTA updates, sniffs a MiLight remote's identity
-off the air, **drives the real light**, and tracks state in both directions — including
-presses on the physical remote. It serves a mobile-first debug UI at
-`http://pool-lights.local/`, and exposes itself to Home Assistant over MQTT discovery as a
-light plus two buttons. What is left is monitoring. See
-[`docs/roadmap.md`](docs/roadmap.md) for the ladder and [`docs/plan.md`](docs/plan.md) for
-the phase plan with exit criteria.
+It is a **second remote**, not a gateway in front of the light. It transmits the same
+protocol with the same identity the physical remote uses, learned by listening to it, so
+both keep working and neither is aware of the other. It also keeps listening, so pressing
+the physical remote updates Home Assistant.
+
+Everything except the radio protocol runs on a Wemos D1 R1: WiFi, OTA, a debug web UI at
+`http://pool-lights.local/`, and the MQTT integration.
+
+## What it exposes
+
+One Home Assistant device, three entities:
+
+- **Light** — on/off, brightness, RGB colour, colour temperature, five effects
+- **Effect faster** / **Effect slower** — buttons, because those keys are momentary
+  actions with no state
+
+Plus a retained availability topic backed by an MQTT last will, so a crashed bridge shows
+as unavailable rather than as a light that has quietly stopped responding.
+
+### What it cannot know
+
+The RF protocol is **one-way**. The receiver never reports anything — not its state, not
+an acknowledgement, not its presence. Everything Home Assistant shows is inferred from
+what the bridge sent plus what it overheard:
+
+- A command lost to interference leaves Home Assistant optimistic and wrong until the next
+  command. Retransmission helps; certainty is not available.
+- If the light is switched at the wall, the bridge has no way to know.
+- The only proof a command landed is a person looking at the light.
 
 ## Hardware
 
 | Part | Notes |
 |---|---|
 | Wemos D1 R1 (ESP8266) | PlatformIO board id `d1`. Any ESP8266 works; the pin map here is R1-specific |
-| NRF24L01+ (PA+LNA variant) | Needs 3.3 V and bulk capacitance at the module — see `docs/hardware.md` |
+| NRF24L01+ (PA+LNA variant) | 3.3 V only. Wiring in [`docs/hardware.md`](docs/hardware.md) |
 | 7 dupont wires | CE, CSN, SCK, MOSI, MISO, VCC, GND. IRQ unused |
-| 10–100 µF + 100 nF caps | Across the radio's VCC/GND. **Not optional** — without them this build received flawlessly and transmitted nothing |
+| 10–100 µF + 100 nF caps | Across the radio's VCC/GND. **Not optional** — without them this build received flawlessly and transmitted nothing at all |
 
 ## Quick start
 
 ```bash
 # macOS, Apple Silicon: the xtensa compiler is x86_64-only
 softwareupdate --install-rosetta --agree-to-license
-
 brew install platformio
-git clone git@github.com:lucaswall/pool-lights.git ~/Projects/pool-lights
-cd ~/Projects/pool-lights
 
-make ports               # expect /dev/cu.usbserial-* (VID:PID 1A86:7523)
-make test                # desktop unit tests, no board needed
-make run                 # build, flash, and print the boot banner
+cp include/secrets.h.example include/secrets.h   # then fill it in
+make test          # desktop unit tests, no board needed
+make run           # build, flash, print the boot banner
 ```
 
-WiFi and OTA need `include/secrets.h` — copy `include/secrets.h.example` and fill it in.
-Once a board is running this firmware it can be reflashed over the air:
+`secrets.h` carries the WiFi and MQTT credentials, the OTA password, and the light's RF
+identity. Capture that identity with `make sniff` and press buttons on the physical
+remote; it prints the device id and group.
 
-```bash
-make ota OTA_HOST=pool-lights.local
-```
+Once a board is running this firmware, reflash it over the air with
+`make ota OTA_HOST=pool-lights.local`. That only works while the *running* sketch handles
+OTA, so one bad flash puts you back on USB.
 
-OTA only works on a board whose *running*
-sketch handles OTA, so one bad flash puts you back on USB.
-
-`make help` lists every target. A correct build prints
-`pinmap : D2=16 D4=4 D8=0 D10=15 LED_BUILTIN=2`; different numbers mean the wrong board
-variant was compiled.
+`make help` lists every target.
 
 ## Layout
 
 ```
-platformio.ini      two envs: d1 (hardware) and native (tests)
-src/                firmware and the debug web UI; radio self-test and sniffer, one env each
-lib/PL1167/         PL1167 transceiver on the NRF24
-include/            header-only pure logic, unit tested
-test/               desktop unit tests (pio test -e native)
-tools/              serial capture, privacy scan
-docs/               plan, roadmap, hardware, protocol notes, code standards
-local/              gitignored: site-specific values, real IPs, sniffed device IDs
-.claude/            Claude Code project settings
+include/        pure logic, header-only, unit tested — protocol codec, state, control
+lib/PL1167/     PL1167 transceiver emulated on the NRF24
+src/            peripherals and wiring: radio, WiFi/OTA, web UI, MQTT
+                plus two standalone diagnostics with their own build envs
+test/           desktop unit tests (make test)
+tools/          bounded serial capture, privacy scan
+docs/           hardware wiring, protocol notes, code standards
+local/          gitignored: credentials, IPs, the sniffed device id
 ```
+
+`pio test` does not build `src/`, which is why anything worth testing lives in a header
+under `include/`. That split is the reason the protocol codec, the state machine and the
+control layer are all verifiable without a radio attached.
+
+Two diagnostics exist because the firmware cannot answer their questions: `make radio`
+proves the radio is wired and genuine before any protocol code runs, and `make sniff` is
+receive-only, so it can learn a remote's identity with no risk of transmitting a pairing
+command.
 
 ## Contributing
 
@@ -83,15 +110,17 @@ network or installation: no IPs, no credentials, no MAC addresses, and no RF pai
 those last ones are effectively the keys to someone's light. Anything site-specific lives
 in the gitignored `local/` directory. See RULE 0 in `CLAUDE.md`.
 
-## Credits and prior art
+## Credits
 
-The eventual firmware is [`sidoh/esp8266_milight_hub`](https://github.com/sidoh/esp8266_milight_hub),
-which does the real protocol work. This repository is the incremental path to running it
-on this hardware, plus whatever local patches turn out to be necessary.
+The protocol constants — the V2 offset table, the xorKey derivation, the PL1167 register
+sequences — are ported from [`sidoh/esp8266_milight_hub`](https://github.com/sidoh/esp8266_milight_hub)
+(MIT), which took them in turn from [`henryk/openmili`](https://github.com/henryk/openmili).
+Years of reverse engineering went into those and they cannot be re-derived. The code around
+them is this project's own.
 
 ## Licence
 
-MIT — see [`LICENSE`](LICENSE). Same as the upstream firmware this project exists to run.
+MIT — see [`LICENSE`](LICENSE).
 
 Note for anyone redistributing a *built* binary: the RF24 library is GPL-2.0, so the
 combined firmware image carries GPL-2.0 obligations even though this source is MIT.

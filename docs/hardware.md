@@ -73,14 +73,15 @@ power is not a workaround for missing capacitance.
 
 Screw the antenna on before powering up. Transmitting without one can damage the PA stage.
 
-## Bring-up order
+## Bring-up
 
-1. Blink and serial, with no radio attached at all.
-2. Radio self-test as a standalone sketch: `begin()`, `isChipConnected()`, `isPVariant()`,
-   write a channel and read it back. A dump of all `0x00` means MISO stuck low or no
-   power; all `0xFF` means MISO floating. Both are wiring, never software.
-3. Only then any protocol code.
+Run `make radio` before trusting anything else. It probes the chip standalone —
+`begin()`, `isChipConnected()`, `isPVariant()`, then writes a channel and reads it back —
+and every failure it reports is wiring or power, never software. A readback of all `0x00`
+means MISO is stuck low or the module is unpowered; all `0xFF` means MISO is floating.
 
-If SPI is marginal, lower the clock before suspecting anything else — RF24 defaults to
-10 MHz and dupont wire often cannot carry it. `RF24 radio(CE, CSN, 4000000)` is a
-first-resort, not a last-resort.
+It probes at 10 MHz and falls back to 4 MHz, because dupont wire often cannot carry the
+faster clock. A pass only at 4 MHz means marginal wiring rather than a missing radio.
+
+**CE is the one wire it cannot check.** CE is a plain strobe outside the SPI bus, so no
+register test can detect it miswired — verify that one by eye.

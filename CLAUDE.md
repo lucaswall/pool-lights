@@ -1,9 +1,8 @@
 # pool-lights
 
 ESP8266 + NRF24L01+ bridge that puts a 2.4 GHz MiLight/MiBoxer RF light on Home Assistant
-over MQTT. Built incrementally: it starts as a blink-and-serial sketch and grows one
-verified rung at a time. See `docs/plan.md` for the phases and `docs/roadmap.md` for the
-ladder.
+over MQTT. See `README.md` for what it does, `docs/hardware.md` for wiring and
+`docs/milight-notes.md` for the protocol.
 
 ---
 
@@ -31,8 +30,8 @@ docs, and issue text.
 **Where site-specific values go instead:** `local/` — the whole directory is gitignored
 except its README. Put real IPs, credentials, sniffed device IDs and personal notes in
 `local/site.md`. Never `git add -f` anything under `local/`. Secrets that must reach the
-firmware go in `include/secrets.h` (gitignored) from the WiFi rung onward, with
-`include/secrets.h.example` committed carrying placeholders only.
+firmware go in `include/secrets.h` (gitignored), with `include/secrets.h.example`
+committed carrying placeholders only.
 
 **Before every commit:** if a value came from the real installation rather than from a
 datasheet, it belongs in `local/`, not in the tree. When in doubt, leave it out and put a
@@ -110,15 +109,15 @@ closes the port.
 - **115200** — our sketches (`Serial.begin(115200)`, `monitor_speed = 115200`)
 - **74880** — the ESP8266 boot ROM banner. Garbage at 115200 during the first second after
   reset is expected, not a fault. Read it with `pio device monitor -b 74880`
-- **9600** — `pio device monitor`'s own default when no speed is given, and also the
-  milight-hub firmware's console. Cause of most "garbage on the monitor" reports
+- **9600** — `pio device monitor`'s own default when no speed is given. Cause of most
+  "garbage on the monitor" reports
 
 ## No JTAG
 
 The ESP8266 has no on-chip debug and `d1.json` declares no debug block; `pio debug` does
 not work and no probe helps. Debugging is serial prints, the `esp8266_exception_decoder`
 monitor filter, and offline `addr2line`. Do not set `build_type = debug` — upstream
-milight-hub documents it causing stack smashing and watchdog resets.
+milight-hub documents it causing stack smashing and watchdog resets on this chip.
 
 ## macOS notes
 
@@ -132,8 +131,7 @@ milight-hub documents it causing stack smashing and watchdog resets.
 
 ## Conventions
 
-**`docs/code-standards.md` is binding on every change.** Read it before writing code,
-and `docs/architecture.md` before adding a component.
+**`docs/code-standards.md` is binding on every change.** Read it before writing code.
 The rules that get broken most often:
 
 - **Minimal.** Smallest thing that works. No abstraction or option for a use case that
@@ -146,5 +144,5 @@ The rules that get broken most often:
   by looking at the board.
 - **Never leave the repo dirty.** Commit and push a finished set of changes before moving
   on, and decide tracked-or-gitignored for a new file the moment it appears.
-- One rung at a time: verified on hardware, then committed.
+- Verify on hardware before committing anything the tests cannot reach.
 - No git tags. Use the commit log to find a working state.

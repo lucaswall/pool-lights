@@ -11,7 +11,7 @@ compile_commands.json
 local/*
 !local/README.md
 
-# Firmware credentials (from the WiFi rung onward). The committed file is
+# Firmware credentials, including the light's RF identity. The committed file is
 # include/secrets.h.example, which carries placeholders only.
 include/secrets.h
 

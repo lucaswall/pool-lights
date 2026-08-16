@@ -1,4 +1,4 @@
-// Rung 7a — receive-only MiLight sniffer. Built by `make sniff`.
+// Receive-only MiLight sniffer, built by `make sniff`.
 //
 // Learns the physical remote's identity by listening. Nothing is transmitted: the binary
 // contains no transmit path at all, so no mis-sent pairing command can displace what the
