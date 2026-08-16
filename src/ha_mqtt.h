@@ -18,6 +18,7 @@ class HaMqtt {
                                                    _hostname(hostname) {}
 
   void loop();
+  bool connected() { return _mqtt.connected(); }
 
  private:
   bool connect();

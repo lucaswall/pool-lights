@@ -11,6 +11,7 @@ class Net {
              const char *otaPassword);
   void loop();
   bool connected() const;
+  int rssi() const;
 
  private:
   const char *_hostname = nullptr;

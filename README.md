@@ -79,7 +79,9 @@ The web UI shows the recent console output live, and serves it raw at `/log`, be
 the board is in a case there is no USB to read. Lines are stamped with uptime, consecutive
 repeats collapse to `(xN)` so one retry loop cannot evict everything else, and free heap is
 reported whenever it reaches a new low — a healthy board stays quiet, a leaking one shows
-a steady descent. The buffer is RAM, so it starts empty after a restart; the boot banner
+a steady descent. A `health` line every five minutes gives the log a pulse, so an idle
+board reads as idle rather than as a stalled page, and an hourly `status` line carries
+enough to read back through days of history. The buffer is RAM, so it starts empty after a restart; the boot banner
 reports `reset reason`, which distinguishes a crash from a power cut.
 
 Reach it by IP rather than `pool-lights.local` if a lookup ever seems to hang: the ESP8266

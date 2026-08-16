@@ -14,6 +14,7 @@
 #include "ha_mqtt.h"
 #include "net.h"
 #include "radio_link.h"
+#include "timing.h"
 #include "secrets.h"
 #include "web.h"
 
@@ -32,10 +33,17 @@ static WebUi web(control, HOST);
 static HaMqtt mqtt(control, HOST);
 static uint32_t reportedVersion = 0;
 
-// Logging heap on a timer would churn the ring for nothing. Reporting only new lows keeps
-// a healthy board silent while a leak shows up as a steady descent.
+// Reporting heap only on new lows keeps a healthy board quiet while a leak shows up as a
+// steady descent.
 static const uint32_t HEAP_REPORT_STEP = 1024;
 static uint32_t heapLowWater = 0;
+
+// A heartbeat, so an idle log is visibly idle rather than ambiguously stalled, and an
+// hourly line that is worth reading back through days of history.
+static const uint32_t HEALTH_MS = 5UL * 60 * 1000;
+static const uint32_t STATUS_MS = 60UL * 60 * 1000;
+static uint32_t lastHealth = 0;
+static uint32_t lastStatus = 0;
 
 static void banner() {
   Serial.println();
@@ -87,6 +95,21 @@ void loop() {
                   packet.held ? "HELD " : "",
                   v2CommandName(packet.command, packet.argument), packet.command,
                   packet.argument, packet.deviceId, packet.group);
+  }
+
+  const uint32_t now = millis();
+  if (elapsed(now, lastHealth, HEALTH_MS)) {
+    lastHealth = now;
+    logLine("health    : heap %lu rssi %d", (unsigned long)ESP.getFreeHeap(), net.rssi());
+  }
+  if (elapsed(now, lastStatus, STATUS_MS)) {
+    lastStatus = now;
+    const uint32_t up = now / 1000;
+    logLine("status    : up %luh%02lum heap %lu low %lu rssi %d wifi %s mqtt %s light %s",
+            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60),
+            (unsigned long)ESP.getFreeHeap(), (unsigned long)heapLowWater, net.rssi(),
+            net.connected() ? "up" : "down", mqtt.connected() ? "up" : "down",
+            control.state().on() ? "on" : "off");
   }
 
   const uint32_t heap = ESP.getFreeHeap();

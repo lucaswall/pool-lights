@@ -35,6 +35,8 @@ void Net::begin(const char *hostname, const char *ssid, const char *password,
 
 bool Net::connected() const { return WiFi.status() == WL_CONNECTED; }
 
+int Net::rssi() const { return WiFi.RSSI(); }
+
 void Net::loop() {
   const bool up = connected();
 

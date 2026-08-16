@@ -164,8 +164,8 @@ function render(s){
     's · heap '+s.heap;
 }
 
-// Polled slower than the state, and only while the page is actually on screen: the log
-// is several KB and the board is also driving a radio.
+// Only polled while the page is actually on screen: the log is several KB and the board
+// is also driving a radio.
 function loadLog(){
   if(document.visibilityState!=='visible')return;
   fetch('/log').then(r=>r.text()).then(t=>{
@@ -187,5 +187,5 @@ function load(){
   });
 }
 load();setInterval(load,500);
-loadLog();setInterval(loadLog,3000);
+loadLog();setInterval(loadLog,1000);
 </script></body></html>)HTML";
