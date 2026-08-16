@@ -110,7 +110,7 @@ kelvin, the protocol uses an opaque 0–100. Map it, test the endpoints, and do 
 it is exact.
 
 Availability is an MQTT last will, set at connect time. A crashed bridge is otherwise
-indistinguishable from an idle one, which is the P6 requirement and nearly free here.
+indistinguishable from an idle one, which is the monitoring requirement and nearly free here.
 
 ## Memory
 

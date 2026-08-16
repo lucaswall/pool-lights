@@ -14,16 +14,14 @@ RF receiver, and with the physical remote still working afterwards.
 
 - On/off, brightness and colour all work from Home Assistant
 - Presses on the physical remote are reflected in Home Assistant state
-- ≥95% of 20 consecutive commands succeed from the bridge's permanent location
 - The bridge survives a power cut and a Home Assistant restart with no manual steps
 - The bridge going offline is detected by monitoring, not by someone noticing the light
   stopped responding
 
 ## The human parts
 
-This plan cannot be executed end to end by an agent. Three things are physical:
-assembling the board and radio, siting the bridge within RF range, and looking at the
-light during verification. The last one is not a gap in the tooling — the protocol is
+This plan cannot be executed end to end by an agent. Two things are physical:
+assembling the board and radio, and looking at the light during verification. The last one is not a gap in the tooling — the protocol is
 one-way, the receiver reports nothing, and no instrumentation on the transmit side can
 prove a command landed.
 
@@ -31,13 +29,12 @@ prove a command landed.
 
 | Phase | Title | Exit criteria |
 |---|---|---|
-| P0 | Hardware | Board enumerates over USB; radio wired by GPIO number with decoupling caps and antenna fitted; a candidate mounting spot named |
-| P1 | Dev environment + hello world | `pio run -t upload` works; serial banner prints the `pinmap` line proving the right board variant; repo tagged `step-01-blink` |
+| P0 | Hardware | Board enumerates over USB; radio wired by GPIO number with decoupling caps and antenna fitted |
+| P1 | Dev environment + hello world | `pio run -t upload` works; serial banner prints the `pinmap` line proving the right board variant |
 | P2 | Radio bring-up | Radio self-test passes: chip answers, genuine `+` part, channel reads back |
 | P3 | Sniff and identify | Device ID / type / group captured from the physical remote; a saved alias reproduces on/off and a colour change on the real light |
 | P4 | MQTT + Home Assistant | Light entity exists, controls the light, and updates when the physical remote is used; survives an HA restart |
-| P5 | Permanent install | 20 consecutive commands succeed from the final location; unattended recovery from a power cut; DHCP reservation in place |
-| P6 | Monitoring + documentation | An induced outage raises the alert path and clears on recovery; findings written up |
+| P5 | Monitoring + documentation | An induced outage raises the alert path and clears on recovery; findings written up |
 
 ## Phase notes
 
@@ -74,14 +71,10 @@ Verification requires someone watching the light.
 ### P4 — MQTT + Home Assistant
 
 Discovery only, no hand-written YAML entity. Verify both directions and count the misses
-over 20 commands — the number is the baseline P5 has to match from the final location.
+over 20 commands. Installing the bridge in its final position is site work, not part of
+this project.
 
-### P5 — Permanent install
-
-Move, power, enclose, then re-run the count *there*. If the spot fails, try another spot
-before reaching for an RF repeater. Do not lower the bar to fit the location.
-
-### P6 — Monitoring + documentation
+### P5 — Monitoring + documentation
 
 A crashed bridge is indistinguishable from an idle one, so availability needs an explicit
 signal (MQTT last-will) rather than an absence of complaints. Induce an outage to prove
