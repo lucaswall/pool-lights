@@ -34,7 +34,7 @@ instrumentation on the transmit side can prove a command landed.
 | P2 | Radio bring-up | Radio self-test passes: chip answers, genuine `+` part, channel reads back |
 | P3 | Sniff and identify | Device ID / type / group captured from the physical remote; a saved alias reproduces on/off and a colour change on the real light |
 | P4 | MQTT + Home Assistant | Light entity exists, controls the light, and updates when the physical remote is used; survives an HA restart |
-| P5 | Monitoring + documentation | An induced outage raises the alert path and clears on recovery; findings written up |
+| P5 | Monitoring + documentation | The bridge publishes availability; existing monitoring reports an induced outage and clears on recovery; findings written up |
 
 ## Phase notes
 
@@ -77,8 +77,19 @@ this project.
 ### P5 — Monitoring + documentation
 
 A crashed bridge is indistinguishable from an idle one, so availability needs an explicit
-signal (MQTT last-will) rather than an absence of complaints. Induce an outage to prove
-the alert fires.
+signal (MQTT last-will) rather than an absence of complaints. That signal is the whole of
+this project's obligation.
+
+**Alerting is not built here.** Any monitoring that already watches the rest of the
+installation should pick this up like anything else — the bridge publishes a retained
+availability topic, Home Assistant marks the entity unavailable when it stops, and a
+generic entity-health check sees an unavailable entity. Expect to *declare* the entity to
+that monitoring rather than to write anything: whole-domain sweeps tend to skip `light`,
+because most lights are legitimately unavailable much of the time.
+
+Induce the outage by publishing the last-will payload to the availability topic by hand.
+It produces exactly what a crash produces, and recovers by publishing the live value back,
+with no need to unplug anything.
 
 ## Decisions
 
