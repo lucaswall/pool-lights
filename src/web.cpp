@@ -17,7 +17,10 @@ void WebUi::loop() {
 }
 
 void WebUi::start() {
-  _server.on("/", HTTP_GET, [this]() { _server.send_P(200, "text/html", PAGE_HTML); });
+  _server.on("/", HTTP_GET, [this]() {
+    _server.sendHeader("Cache-Control", "no-store");
+    _server.send_P(200, "text/html", PAGE_HTML);
+  });
   _server.on("/api/state", HTTP_GET, [this]() { handleState(); });
   _server.on("/api/set", HTTP_POST, [this]() { handleSet(); });
   _server.on("/log", HTTP_GET, [this]() { handleLog(); });

@@ -105,7 +105,8 @@ sent and every remote press overheard — so a fault from hours ago would be lon
 the time anyone went looking for it.
 
 Lines are stamped with uptime, and consecutive repeats collapse to `(xN)` so one retry loop
-cannot evict everything else. Free heap is reported whenever it reaches a new low: a
+cannot evict everything else. The five-minute `health` line carries the fault count, so a
+problem is visible from the main log without opening `/errors`. Free heap is reported whenever it reaches a new low: a
 healthy board stays quiet, a leaking one shows a steady descent.
 
 Both rings are RAM and start empty after a restart. `/status` exists for that reason — it

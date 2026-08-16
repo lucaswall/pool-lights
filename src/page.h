@@ -107,7 +107,7 @@ footer a{color:var(--accent);text-decoration:none}
 </div>
 
 <div class="card">
-  <h2>Console</h2>
+  <h2>Console <span id="logat" style="float:right;font-weight:400"></span></h2>
   <pre id="log">…</pre>
 </div>
 
@@ -175,7 +175,8 @@ function loadLog(){
       el.textContent=t;
       if(pinned)el.scrollTop=el.scrollHeight;
     }
-  }).catch(()=>{});
+    $('logat').textContent=new Date().toLocaleTimeString();
+  }).catch(()=>{$('logat').textContent='unreachable'});
 }
 
 function load(){

@@ -100,10 +100,10 @@ void loop() {
   const uint32_t now = millis();
   if (elapsed(now, lastHealth, HEALTH_MS)) {
     lastHealth = now;
-    logLine("health    : heap %lu low %lu rssi %d wifi %s mqtt %s light %s",
+    logLine("health    : heap %lu low %lu rssi %d wifi %s mqtt %s light %s faults %u",
             (unsigned long)ESP.getFreeHeap(), (unsigned long)heapLowWater, net.rssi(),
             net.connected() ? "up" : "down", mqtt.connected() ? "up" : "down",
-            control.state().on() ? "on" : "off");
+            control.state().on() ? "on" : "off", errorBuffer().count());
   }
 
   const uint32_t heap = ESP.getFreeHeap();
