@@ -13,7 +13,7 @@ emulates it — leaving the physical remote working exactly as before.
 Rung 7 of 7. The board joins WiFi, accepts OTA updates, sniffs a MiLight remote's identity
 off the air, **drives the real light**, and tracks state in both directions — including
 presses on the physical remote. It serves a mobile-first debug UI at
-`http://<hostname>.local/`. What is left is Home Assistant: MQTT, discovery, and a
+`http://pool-lights.local/`. What is left is Home Assistant: MQTT, discovery, and a
 permanent install. See
 [`docs/roadmap.md`](docs/roadmap.md) for the ladder and [`docs/plan.md`](docs/plan.md) for
 the phase plan with exit criteria.
@@ -46,10 +46,10 @@ WiFi and OTA need `include/secrets.h` — copy `include/secrets.h.example` and f
 Once a board is running this firmware it can be reflashed over the air:
 
 ```bash
-make ota OTA_HOST=pool-lights-<chipid>.local
+make ota OTA_HOST=pool-lights.local
 ```
 
-The hostname is printed in the boot banner. OTA only works on a board whose *running*
+OTA only works on a board whose *running*
 sketch handles OTA, so one bad flash puts you back on USB.
 
 `make help` lists every target. A correct build prints

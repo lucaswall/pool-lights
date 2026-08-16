@@ -10,7 +10,6 @@
 
 #include "control.h"
 #include "net.h"
-#include "netid.h"
 #include "radio_link.h"
 #include "secrets.h"
 #include "web.h"
@@ -20,18 +19,20 @@
 static const uint8_t PIN_CE = 4;
 static const uint8_t PIN_CSN = 5;
 
-static char host[NETID_LEN];
+// One bridge, so a plain name: it is what shows up in the router's client list for the
+// DHCP reservation, and what resolves as pool-lights.local.
+static const char HOST[] = "pool-lights";
 static Net net;
 static RadioLink radio(PIN_CE, PIN_CSN);
 static Control control(radio, MILIGHT_DEVICE_ID, MILIGHT_GROUP);
-static WebUi web(control, host);
+static WebUi web(control, HOST);
 static uint32_t reportedVersion = 0;
 
 static void banner() {
   Serial.println();
   Serial.println(F("=== pool-lights ==="));
   Serial.printf("build     : %s %s\n", __DATE__, __TIME__);
-  Serial.printf("host      : %s\n", host);
+  Serial.printf("host      : %s\n", HOST);
   Serial.printf("heap      : %u bytes\n", ESP.getFreeHeap());
   Serial.printf("reset     : %s\n", ESP.getResetReason().c_str());
   Serial.printf("pinmap    : D2=%u D4=%u D8=%u D10=%u LED_BUILTIN=%u\n",
@@ -52,7 +53,6 @@ void setup() {
 
   Serial.begin(115200);
   delay(200);
-  deviceName(ESP.getChipId(), host, sizeof(host));
   banner();
 
   if (!radio.begin()) {
@@ -61,7 +61,7 @@ void setup() {
     Serial.println(F("radio     : listening"));
   }
 
-  net.begin(host, WIFI_SSID, WIFI_PASSWORD, OTA_PASSWORD);
+  net.begin(HOST, WIFI_SSID, WIFI_PASSWORD, OTA_PASSWORD);
 }
 
 void loop() {
