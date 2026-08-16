@@ -9,6 +9,7 @@
 #include <Arduino.h>
 
 #include "control.h"
+#include "ha_mqtt.h"
 #include "net.h"
 #include "radio_link.h"
 #include "secrets.h"
@@ -26,6 +27,7 @@ static Net net;
 static RadioLink radio(PIN_CE, PIN_CSN);
 static Control control(radio, MILIGHT_DEVICE_ID, MILIGHT_GROUP);
 static WebUi web(control, HOST);
+static HaMqtt mqtt(control, HOST);
 static uint32_t reportedVersion = 0;
 
 static void banner() {
@@ -67,6 +69,7 @@ void setup() {
 void loop() {
   net.loop();   // before web: this is what starts mDNS, which web then advertises on
   web.loop();
+  mqtt.loop();
   radio.loop();
 
   Packet packet;

@@ -13,8 +13,8 @@ emulates it — leaving the physical remote working exactly as before.
 Rung 7 of 7. The board joins WiFi, accepts OTA updates, sniffs a MiLight remote's identity
 off the air, **drives the real light**, and tracks state in both directions — including
 presses on the physical remote. It serves a mobile-first debug UI at
-`http://pool-lights.local/`. What is left is Home Assistant: MQTT, discovery, and a
-permanent install. See
+`http://pool-lights.local/`, and exposes itself to Home Assistant over MQTT discovery as a
+light plus two buttons. What is left is the permanent install and monitoring. See
 [`docs/roadmap.md`](docs/roadmap.md) for the ladder and [`docs/plan.md`](docs/plan.md) for
 the phase plan with exit criteria.
 

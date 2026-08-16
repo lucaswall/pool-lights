@@ -10,7 +10,7 @@ misdiagnosed several rungs later.
 | 2 | **Serial round-trip** | Host→device direction, and that the sketch is *running* rather than boot-looping | ~8 lines in `main.cpp` |
 | 3 | **WiFi connect** | Credentials and DHCP — but the real point is that the 3.3 V rail survives radio TX current bursts. Same power-integrity failure that kills a PA+LNA radio at rung 6, surfaced three rungs early and for free | `include/secrets.h.example`, gitignored `include/secrets.h` |
 | 4 | **OTA** | Iterating without unplugging, *before* jumper wires cover the USB port. Caveat: you can only OTA a board whose running sketch handles OTA — one bad flash and you are back on USB | an OTA build env |
-| 5 | **MQTT** | TCP stack, broker auth, and the Home-Assistant-facing half of the bridge, all with zero RF involved | an MQTT client library; `src/net.*`, `src/mqtt.*` |
+| 5 | **MQTT** | TCP stack, broker auth, and the Home-Assistant-facing half of the bridge, all with zero RF involved | PubSubClient and ArduinoJson; `src/net.*`, `src/ha_mqtt.*` |
 | 6 | **SPI / radio self-test** | Wiring, SPI clock integrity, a genuine `+` part, and the power rail under RF load. Standalone sketch, before any protocol code | RF24 library; `tools/serial_log.py` |
 | 7 | **MiLight bridge** | The destination: sniff the remote, emulate it, expose the light to Home Assistant | our own PL1167 and V2 codec — see `docs/milight-notes.md` |
 

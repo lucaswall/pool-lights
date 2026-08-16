@@ -28,6 +28,11 @@ class Control {
   }
   void setEffect(uint8_t effect) { issue(V2_CMD_MODE, effect); }
 
+  // The speed keys ride on the on/off command with their own arguments rather than being
+  // commands of their own. They adjust the running effect, not the power state.
+  void effectFaster() { issue(V2_CMD_ON_OFF, V2_ARG_SPEED_UP); }
+  void effectSlower() { issue(V2_CMD_ON_OFF, V2_ARG_SPEED_DOWN); }
+
   // Traffic overheard from the physical remote. Never transmits.
   void onReceived(const Packet &packet) {
     if (packet.deviceId != _encoder.deviceId() || packet.group != _encoder.group()) {

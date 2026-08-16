@@ -40,9 +40,20 @@ what the bridge sent plus what it overheard. Consequences worth designing around
 
 ## Entity expectations
 
-A single light entity supporting on/off, brightness, colour and colour temperature,
-depending on what the receiver implements. Name it and assign it an area in Home
-Assistant; keep the real entity id out of this repository.
+One device carrying three entities:
+
+- A **light**, JSON schema, with on/off, brightness, `rgb` and `color_temp`. Brightness is
+  declared with `brightness_scale: 100` so Home Assistant speaks the protocol's own units
+  and no rounding creeps in.
+- Two **buttons**, effect faster and effect slower. Those keys are momentary actions with
+  no state, which a button models and a light entity cannot.
+
+Three remote functions are deliberately not exposed: night mode, and white mode as a
+command distinct from setting a colour temperature. They remain on the physical remote and
+in the debug web UI.
+
+Name the entities and assign an area in Home Assistant; keep the real entity id out of
+this repository.
 
 ## Availability
 

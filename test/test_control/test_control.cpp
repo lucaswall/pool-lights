@@ -103,6 +103,29 @@ static void ignores_other_devices(void) {
   TEST_ASSERT_FALSE(control.state().on());
 }
 
+// The speed keys ride on the on/off command with their own arguments, which is why they
+// are not a separate command in the protocol.
+static void effect_speed_buttons(void) {
+  FakeSink sink;
+  Control control(sink, 0xabcd, 1);
+
+  control.effectFaster();
+  TEST_ASSERT_EQUAL_HEX8(V2_CMD_ON_OFF, sink.decoded().command);
+  TEST_ASSERT_EQUAL_HEX8(V2_ARG_SPEED_UP, sink.decoded().argument);
+
+  control.effectSlower();
+  TEST_ASSERT_EQUAL_HEX8(V2_ARG_SPEED_DOWN, sink.decoded().argument);
+}
+
+// They adjust a running effect, so they must not read as OFF in our own state either.
+static void speed_does_not_turn_the_light_off(void) {
+  FakeSink sink;
+  Control control(sink, 0xabcd, 1);
+  control.turnOn();
+  control.effectFaster();
+  TEST_ASSERT_TRUE(control.state().on());
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(sends_on_and_updates_its_own_state);
@@ -111,5 +134,7 @@ int main(void) {
   RUN_TEST(colour_and_white);
   RUN_TEST(overheard_packets_update_state);
   RUN_TEST(ignores_other_devices);
+  RUN_TEST(effect_speed_buttons);
+  RUN_TEST(speed_does_not_turn_the_light_off);
   return UNITY_END();
 }

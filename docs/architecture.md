@@ -18,14 +18,14 @@ include/            pure, no Arduino headers, unit tested
   encoder.h         Encoder: device id, group, sequence
   state.h           LightState: what the light is doing
   control.h         Control: the facade, header-only so it is testable
-  units.h           UI <-> protocol conversions            (not needed yet)
+  units.h           Home Assistant <-> protocol conversions
 lib/PL1167/         radio PHY
 src/                peripherals and wiring
   radio_link.*      half-duplex arbitration, implements PacketSink
   net.*             WiFi + OTA
   web.*             the debug UI, and page.h which holds it
   main.cpp          construction and loop, nothing else
-  ha_mqtt.*         discovery and topic translation        (not built yet)
+  ha_mqtt.*         discovery and topic translation
 ```
 
 ## Components
@@ -43,10 +43,11 @@ Updated by exactly one method, `apply(const Packet&)`, so a command we sent and 
 overheard from the physical remote travel the same code path. Tracks a dirty flag so the
 MQTT layer knows when to publish.
 
-**`units.h`** — *still not built, and the web UI is why it is not needed.* Its hue control
-is a 0–255 slider, which is exactly what the protocol carries, so nothing is converted and
-nothing can be lost. A conversion layer only becomes necessary when something upstream
-insists on RGB triples or kelvin — Home Assistant will.
+**`units.h`** — the web UI needed none of this: its hue control is a 0–255 slider, which
+is exactly what the protocol carries. Home Assistant forced it by insisting on RGB triples
+and mireds. Both conversions are pure and tested, including the wrap at the top of the hue
+circle, where hue 255 scales to exactly 360° and lands on magenta instead of red unless it
+is wrapped.
 
 **`RadioLink`** — owns the PL1167 and arbitrates the radio, which is half-duplex. Default
 state is listening, because state sync depends on overhearing the remote. An outgoing
@@ -61,8 +62,11 @@ intent: `turnOn()`, `setBrightness(0..100)`, `setHue()`, `setWhite()`. Feeds eve
 sent or overheard, into `LightState::apply`, and drops traffic from other devices and
 groups. Header-only, so the whole layer is unit tested against a fake sink.
 
-**`HaMqtt`** — *not built yet.* Discovery payload, topic subscriptions, and translation
-between Home Assistant vocabulary and `Control` calls. A web UI comes first.
+**`HaMqtt`** — the only place that knows Home Assistant exists. One device carrying three
+entities: a JSON-schema light, and a button each for effect speed. The speed keys are
+momentary actions with no state, which is what a button models and what a light entity
+cannot. Publishes on any change, whoever caused it, off the same version counter the web
+UI polls.
 
 ## Two rules about dependencies
 
@@ -92,7 +96,7 @@ worst.
 `LightState` exposes a version counter rather than a dirty flag: the serial log and the
 browser both need to know whether they are behind, and one bool cannot serve two readers.
 
-## Home Assistant specifics, for when we get there
+## Home Assistant specifics
 
 Use the **JSON schema** — one payload carrying state, brightness, colour mode and colour,
 rather than a topic per property.
