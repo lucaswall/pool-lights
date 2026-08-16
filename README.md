@@ -75,19 +75,47 @@ OTA, so one bad flash puts you back on USB.
 
 `make help` lists every target.
 
-The web UI shows the recent console output live, and serves it raw at `/log`, because once
-the board is in a case there is no USB to read. Lines are stamped with uptime, consecutive
-repeats collapse to `(xN)` so one retry loop cannot evict everything else, and free heap is
-reported whenever it reaches a new low — a healthy board stays quiet, a leaking one shows
-a steady descent. A `health` line every five minutes gives the log a pulse, so an idle
-board reads as idle rather than as a stalled page, and an hourly `status` line carries
-enough to read back through days of history. The buffer is RAM, so it starts empty after a restart; the boot banner
-reports `reset reason`, which distinguishes a crash from a power cut.
+## HTTP endpoints
 
-Reach it by IP rather than `pool-lights.local` if a lookup ever seems to hang: the ESP8266
-mDNS responder answers `A` queries but ignores `AAAA` entirely, without even a negative
-reply, so a resolver asking for both waits out its full timeout — about five seconds — on
-the IPv6 half before using the IPv4 answer it already had.
+Everything the board serves, on port 80.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /` | The web UI: state, controls, and a live console panel |
+| `GET /api/state` | State as JSON, plus IP, RSSI, uptime and heap. Polled twice a second by the page |
+| `POST /api/set` | Commands. Every parameter is optional and applied if present: `on=1`, `off=1`, `white=1`, `hue=0..255`, `brightness=0..100`, `sat=0..100`, `effect=0..4` |
+| `GET /status` | Plain-text snapshot: build stamp, reset reason, uptime, heap, WiFi, light state, and how full both rings are |
+| `GET /log` | The console ring as plain text, oldest first |
+| `GET /errors` | Faults only, from a separate smaller ring |
+
+`/api/state` carries a `version` counter that advances only when the light state really
+changes, so a client can tell a change from a repeat without diffing.
+
+```bash
+curl http://pool-lights.local/status
+curl -X POST "http://pool-lights.local/api/set?on=1&hue=85&brightness=60"
+```
+
+### The two rings
+
+The console ring holds 80 lines, the fault ring 24, and faults are written to both. The
+main log fills with routine traffic — a `health` line every five minutes, every command
+sent and every remote press overheard — so a fault from hours ago would be long evicted by
+the time anyone went looking for it.
+
+Lines are stamped with uptime, and consecutive repeats collapse to `(xN)` so one retry loop
+cannot evict everything else. Free heap is reported whenever it reaches a new low: a
+healthy board stays quiet, a leaking one shows a steady descent.
+
+Both rings are RAM and start empty after a restart. `/status` exists for that reason — it
+is computed on request rather than remembered, so the build stamp and reset reason cannot
+scroll out of anything.
+
+### If a name lookup seems to hang
+
+Use the IP. The ESP8266 mDNS responder answers `A` queries but ignores `AAAA` entirely,
+without even a negative reply, so a resolver asking for both waits out its full timeout —
+about five seconds — on the IPv6 half before using the IPv4 answer it already had.
 
 ## Layout
 
