@@ -10,9 +10,10 @@ emulates it — leaving the physical remote working exactly as before.
 
 ## Status
 
-Rung 6 of 7. The board blinks, prints a banner, joins WiFi, accepts OTA updates, and its
-radio passes a standalone self-test. The MiLight protocol itself is documented and not yet
-built. See
+Rung 7 of 7, partly. The board joins WiFi, accepts OTA updates, passes a radio self-test,
+sniffs a MiLight remote's identity off the air, and **drives the real light** — on/off,
+colour, brightness, white mode. What is left is the Home Assistant half: MQTT, discovery,
+and a permanent install. See
 [`docs/roadmap.md`](docs/roadmap.md) for the ladder and [`docs/plan.md`](docs/plan.md) for
 the phase plan with exit criteria.
 
@@ -23,7 +24,7 @@ the phase plan with exit criteria.
 | Wemos D1 R1 (ESP8266) | PlatformIO board id `d1`. Any ESP8266 works; the pin map here is R1-specific |
 | NRF24L01+ (PA+LNA variant) | Needs 3.3 V and bulk capacitance at the module — see `docs/hardware.md` |
 | 7 dupont wires | CE, CSN, SCK, MOSI, MISO, VCC, GND. IRQ unused |
-| 10–100 µF + 100 nF caps | Across the radio's VCC/GND. Not optional on PA+LNA |
+| 10–100 µF + 100 nF caps | Across the radio's VCC/GND. **Not optional** — without them this build received flawlessly and transmitted nothing |
 
 ## Quick start
 

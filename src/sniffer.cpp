@@ -63,9 +63,11 @@ static void report(const uint8_t *raw, uint8_t length) {
 
   Serial.printf("      protocol 0x%02X%s\n", decoded[V2_PROTOCOL],
                 v2IsFut089(decoded) ? "  <-- FUT088/089/092 family" : "  (other remote)");
-  Serial.printf("      DEVICE ID 0x%04X   group %u   command 0x%02X arg 0x%02X seq %u\n",
-                v2DeviceId(decoded), decoded[V2_GROUP], decoded[V2_COMMAND],
-                decoded[V2_ARGUMENT], decoded[V2_SEQUENCE]);
+  Serial.printf("      DEVICE ID 0x%04X   group %u   %s%s (0x%02X arg 0x%02X) seq %u\n",
+                v2DeviceId(decoded), decoded[V2_GROUP],
+                v2IsHeld(decoded[V2_COMMAND]) ? "HELD " : "",
+                v2CommandName(decoded[V2_COMMAND], decoded[V2_ARGUMENT]),
+                decoded[V2_COMMAND], decoded[V2_ARGUMENT], decoded[V2_SEQUENCE]);
 }
 
 void setup() {

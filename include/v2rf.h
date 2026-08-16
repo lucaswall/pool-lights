@@ -91,6 +91,8 @@ inline void v2Encode(uint8_t *packet) {
 #define V2_CMD_MODE 0x06
 #define V2_CMD_SAT_KELVIN 0x07
 #define V2_ARG_WHITE_MODE 0x14
+#define V2_ARG_SPEED_UP 0x12
+#define V2_ARG_SPEED_DOWN 0x13
 
 // Bit 7 marks a held key; the argument still says which one.
 #define V2_HELD 0x80
@@ -116,6 +118,23 @@ inline void v2Build(uint8_t *packet, uint16_t deviceId, uint8_t group, uint8_t c
   packet[V2_GROUP] = group;
   packet[V2_CHECKSUM] = 0;
   v2Encode(packet);
+}
+
+// Names a command for humans reading a sniff. Masks the held bit: without that every
+// long press reads as an unknown command.
+inline const char *v2CommandName(uint8_t command, uint8_t arg) {
+  switch (v2BaseCommand(command)) {
+    case V2_CMD_ON_OFF:
+      if (arg == V2_ARG_WHITE_MODE) return "white mode";
+      if (arg == V2_ARG_SPEED_UP) return "mode speed up";
+      if (arg == V2_ARG_SPEED_DOWN) return "mode speed down";
+      return arg > 8 ? "off" : "on";
+    case V2_CMD_COLOR: return "colour";
+    case V2_CMD_BRIGHTNESS: return "brightness";
+    case V2_CMD_MODE: return "mode";
+    case V2_CMD_SAT_KELVIN: return "saturation/kelvin";
+  }
+  return "unknown";
 }
 
 inline uint16_t v2DeviceId(const uint8_t *decoded) {

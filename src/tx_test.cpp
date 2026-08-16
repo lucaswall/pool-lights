@@ -1,7 +1,7 @@
 // Rung 7b — transmit test, built by `make tx`.
 //
-// Cycles red, green, blue on a 3 s loop so the light can be watched rather than the
-// keyboard. Loops forever.
+// Exercises the whole command set on a timer so the light can be watched rather than
+// the keyboard. Loops forever.
 //
 // Never sends to group 0: repeated ON to group 0 is the pairing command, and a mis-sent
 // pair can displace the remote the receiver is bound to.
@@ -45,9 +45,16 @@ struct Step {
 };
 
 static const Step SEQUENCE[] = {
-  {"RED",   V2_CMD_COLOR, 0x00, 3000},
-  {"GREEN", V2_CMD_COLOR, 0x55, 3000},
-  {"BLUE",  V2_CMD_COLOR, 0xAB, 3000},
+  {"ON",             V2_CMD_ON_OFF,     v2OnArg(MILIGHT_GROUP),  5000},
+  {"RED",            V2_CMD_COLOR,      0x00,                    4000},
+  {"GREEN",          V2_CMD_COLOR,      0x55,                    4000},
+  {"BLUE",           V2_CMD_COLOR,      0xAB,                    4000},
+  {"brightness 10",  V2_CMD_BRIGHTNESS, 10,                      4000},
+  {"brightness 100", V2_CMD_BRIGHTNESS, 100,                     4000},
+  {"WHITE mode",     V2_CMD_ON_OFF,     V2_ARG_WHITE_MODE,       4000},
+  {"saturation 50",  V2_CMD_SAT_KELVIN, 50,                      4000},
+  {"mode 2",         V2_CMD_MODE,       2,                       5000},
+  {"OFF",            V2_CMD_ON_OFF,     v2OffArg(MILIGHT_GROUP), 6000},
 };
 
 static void send(const Step &step) {

@@ -99,6 +99,24 @@ static void group_args(void) {
   TEST_ASSERT_EQUAL_HEX8(0x0a, v2OffArg(1));
 }
 
+static void names_commands(void) {
+  TEST_ASSERT_EQUAL_STRING("on", v2CommandName(V2_CMD_ON_OFF, v2OnArg(1)));
+  TEST_ASSERT_EQUAL_STRING("off", v2CommandName(V2_CMD_ON_OFF, v2OffArg(1)));
+  TEST_ASSERT_EQUAL_STRING("white mode", v2CommandName(V2_CMD_ON_OFF, V2_ARG_WHITE_MODE));
+  TEST_ASSERT_EQUAL_STRING("mode speed up", v2CommandName(V2_CMD_ON_OFF, V2_ARG_SPEED_UP));
+  TEST_ASSERT_EQUAL_STRING("mode speed down", v2CommandName(V2_CMD_ON_OFF, V2_ARG_SPEED_DOWN));
+  TEST_ASSERT_EQUAL_STRING("colour", v2CommandName(V2_CMD_COLOR, 0x55));
+  TEST_ASSERT_EQUAL_STRING("brightness", v2CommandName(V2_CMD_BRIGHTNESS, 100));
+  TEST_ASSERT_EQUAL_STRING("mode", v2CommandName(V2_CMD_MODE, 2));
+  TEST_ASSERT_EQUAL_STRING("saturation/kelvin", v2CommandName(V2_CMD_SAT_KELVIN, 50));
+}
+
+// A held key sets bit 7, so naming must mask it or every long press reads as unknown.
+static void names_held_commands(void) {
+  TEST_ASSERT_EQUAL_STRING("off", v2CommandName(V2_CMD_ON_OFF | V2_HELD, v2OffArg(1)));
+  TEST_ASSERT_EQUAL_STRING("colour", v2CommandName(V2_CMD_COLOR | V2_HELD, 0x00));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(xor_key_known_vectors);
@@ -110,5 +128,7 @@ int main(void) {
   RUN_TEST(built_packets_decode_back);
   RUN_TEST(held_flag_is_separable);
   RUN_TEST(group_args);
+  RUN_TEST(names_commands);
+  RUN_TEST(names_held_commands);
   return UNITY_END();
 }

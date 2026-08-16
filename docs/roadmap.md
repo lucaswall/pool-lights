@@ -12,10 +12,10 @@ misdiagnosed several rungs later.
 | 4 | **OTA** | Iterating without unplugging, *before* jumper wires cover the USB port. Caveat: you can only OTA a board whose running sketch handles OTA — one bad flash and you are back on USB | an OTA build env |
 | 5 | **MQTT** | TCP stack, broker auth, and the Home-Assistant-facing half of the bridge, all with zero RF involved | an MQTT client library; `src/net.*`, `src/mqtt.*` |
 | 6 | **SPI / radio self-test** | Wiring, SPI clock integrity, a genuine `+` part, and the power rail under RF load. Standalone sketch, before any protocol code | RF24 library; `tools/serial_log.py` |
-| 7 | **MiLight bridge** | The destination: sniff the remote, emulate it, expose the light to Home Assistant | upstream firmware as a sibling clone — see `docs/milight-notes.md` |
+| 7 | **MiLight bridge** | The destination: sniff the remote, emulate it, expose the light to Home Assistant | our own PL1167 and V2 codec — see `docs/milight-notes.md` |
 
 Rungs 1–6 are ordinary ESP8266 work and stand on their own. Rung 7 is where this project
-becomes specific.
+becomes specific: sniffing and transmitting are done, Home Assistant is what remains.
 
 ## Why a standalone radio self-test (rung 6)
 

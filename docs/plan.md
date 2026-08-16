@@ -33,7 +33,7 @@ prove a command landed.
 |---|---|---|
 | P0 | Hardware | Board enumerates over USB; radio wired by GPIO number with decoupling caps and antenna fitted; a candidate mounting spot named |
 | P1 | Dev environment + hello world | `pio run -t upload` works; serial banner prints the `pinmap` line proving the right board variant; repo tagged `step-01-blink` |
-| P2 | Build and flash the bridge | Radio self-test passes; firmware built from source (1.13.1-beta2, with a `d1` env added); web UI reachable; radio pins set; three clean power cycles |
+| P2 | Radio bring-up | Radio self-test passes: chip answers, genuine `+` part, channel reads back |
 | P3 | Sniff and identify | Device ID / type / group captured from the physical remote; a saved alias reproduces on/off and a colour change on the real light |
 | P4 | MQTT + Home Assistant | Light entity exists, controls the light, and updates when the physical remote is used; survives an HA restart |
 | P5 | Permanent install | 20 consecutive commands succeed from the final location; unattended recovery from a power cut; DHCP reservation in place |
@@ -52,12 +52,15 @@ Exists so that the first time something goes wrong, it is a five-line sketch fai
 not a twenty-thousand-line firmware. Board id `d1`; the `pinmap` banner line is the
 verification that matters.
 
-### P2 — Build and flash the bridge
+### P2 — Radio bring-up
 
-Two steps in order. First a **standalone radio self-test** — the upstream firmware never
+A **standalone radio self-test** before any protocol code: the upstream firmware never
 verifies the radio answered, so an unwired module presents as a healthy device on WiFi and
-MQTT. Then the firmware itself, built from source as a sibling clone (never a submodule),
-pinned to 1.13.1-beta2 for the FUT088 colour-temperature and saturation commands.
+MQTT. Prove the radio once, separately, and that whole class of confusion disappears.
+
+Decoupling capacitors at the module are part of this phase, not a detail — see
+`docs/hardware.md`. Without them the radio receives flawlessly and transmits nothing, and
+every software check still passes.
 
 ### P3 — Sniff and identify
 
@@ -93,6 +96,6 @@ the alert fires.
 | D3 | CSN on a non-strap GPIO rather than the firmware default | GPIO15 must be low at boot; a CSN line idling high there can prevent booting on boards without a pulldown |
 | D4 | Clone the remote's identity by sniffing rather than pairing as a new remote | Nothing at the receiver is touched, the physical remote keeps working, and no existing pairing can be displaced |
 | D5 | Human visual confirmation is an accepted verification step | The protocol is one-way. This is a property of the system, not a defect in the plan |
-| D6 | Build from source rather than flashing a release binary | The needed decoding exists only in a pre-release, upstream is dormant, and any remaining gap becomes a local patch |
+| D6 | Implement the protocol here rather than adopting upstream's firmware | Upstream is 14k lines to reach ~800 of radio, has no unit tests, and mis-decodes held buttons. The reverse-engineered constants are ported (MIT) because they cannot be re-derived; the code around them is ours and is tested |
 | D7 | A standalone radio self-test precedes the bridge firmware | The firmware discards its radio's init result, so a wiring fault would otherwise be diagnosed as a protocol problem |
-| D8 | Upstream firmware is a sibling clone, never a submodule | Keeps our incremental sketches and a large upstream tree independently versioned, and keeps upstream rebases out of this history |
+| D8 | Upstream stays a sibling clone, never a submodule | It is a reference to read and a control to test against, not a dependency. Keeps a large tree and its rebases out of this history |

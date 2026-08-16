@@ -57,6 +57,20 @@ is prescribed by both the RF24 maintainers and the milight-hub author, not folkl
 A module that behaves better when you touch it is a power-stability fault, verbatim from
 the RF24 docs.
 
+**Confirmed here, and the symptom is deeply misleading.** Without those capacitors this
+build received perfectly — thousands of packets, correct CRCs, clean decodes — while
+transmitting nothing a receiver five metres away would act on. Receive draws a fraction of
+the current, so it never provokes the fault. Everything that can be checked in software
+looks healthy: the chip asserts TX_DS on every send, so the radio genuinely believes it
+transmitted.
+
+Adding the two capacitors was the entire fix. If transmit does not work and receive does,
+check the decoupling before suspecting the protocol, the wiring or the code — all three
+will pass their own tests while the light stays dark. Note also that `setPALevel()` does
+**not** meaningfully reduce the current spike on a PA+LNA module: it controls the nRF24
+die's output, while the external amplifier draws its own current regardless. Lowering
+power is not a workaround for missing capacitance.
+
 Screw the antenna on before powering up. Transmitting without one can damage the PA stage.
 
 ## Bring-up order
