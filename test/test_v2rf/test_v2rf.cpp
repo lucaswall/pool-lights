@@ -117,6 +117,49 @@ static void names_held_commands(void) {
   TEST_ASSERT_EQUAL_STRING("colour", v2CommandName(V2_CMD_COLOR | V2_HELD, 0x00));
 }
 
+// v2Build pins the key byte to 0x00, so the existing known-answer test only ever reads
+// column 0 of the offset table and never reaches the jump branch — while the decode path
+// sees every key the remote uses. These vectors were computed independently: one key per
+// residue class mod 4, plus one inside the 0x54..0xD3 jump window.
+static void decodes_every_offset_column_and_the_jump_branch(void) {
+  struct Case { uint8_t key; uint8_t encoded[V2_PACKET_LEN]; };
+  const Case cases[] = {
+    {0x00, {0x00, 0xd8, 0x48, 0xe8, 0x62, 0x10, 0xab, 0x64, 0x79}},
+    {0x01, {0x01, 0xb1, 0xe5, 0xd9, 0xb5, 0xd9, 0x7e, 0xb8, 0x2b}},
+    {0x02, {0x02, 0xa5, 0x02, 0x03, 0xce, 0xe4, 0x16, 0x94, 0x50}},
+    {0x03, {0x03, 0xec, 0x2f, 0xa3, 0xa3, 0xc6, 0xe6, 0xbd, 0x7c}},
+    {0x60, {0x60, 0x78, 0xe8, 0x48, 0xc2, 0x70, 0x0b, 0xc4, 0x79}},
+  };
+
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    uint8_t packet[V2_PACKET_LEN];
+    memcpy(packet, cases[i].encoded, V2_PACKET_LEN);
+    v2Decode(packet);
+
+    TEST_ASSERT_EQUAL_HEX8(cases[i].key, packet[V2_KEY]);
+    TEST_ASSERT_EQUAL_HEX8(V2_PROTOCOL_FUT089, packet[V2_PROTOCOL]);
+    TEST_ASSERT_EQUAL_HEX16(0xabcd, v2DeviceId(packet));
+    TEST_ASSERT_EQUAL_HEX8(V2_CMD_BRIGHTNESS, packet[V2_COMMAND]);
+    TEST_ASSERT_EQUAL_HEX8(0x40, packet[V2_ARGUMENT]);
+    TEST_ASSERT_EQUAL_HEX8(0x11, packet[V2_SEQUENCE]);
+    TEST_ASSERT_EQUAL_HEX8(0x03, packet[V2_GROUP]);
+  }
+}
+
+// The checksum row is offset with jumpStart 0 while every other byte uses the jump — a
+// deliberate asymmetry nothing pinned.
+static void the_checksum_row_ignores_the_jump(void) {
+  TEST_ASSERT_EQUAL_HEX8(v2Offset(8, 0x60, 0), v2Offset(8, 0x00, 0));
+  TEST_ASSERT_TRUE(v2Offset(4, 0x60, V2_OFFSET_JUMP_START) !=
+                   v2Offset(4, 0x00, V2_OFFSET_JUMP_START));
+}
+
+// v2CommandName splits on/off at the same 8/9 boundary as LightState.
+static void names_the_group_boundary(void) {
+  TEST_ASSERT_EQUAL_STRING("on", v2CommandName(V2_CMD_ON_OFF, 8));
+  TEST_ASSERT_EQUAL_STRING("off", v2CommandName(V2_CMD_ON_OFF, 9));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(xor_key_known_vectors);
@@ -130,5 +173,8 @@ int main(void) {
   RUN_TEST(group_args);
   RUN_TEST(names_commands);
   RUN_TEST(names_held_commands);
+  RUN_TEST(decodes_every_offset_column_and_the_jump_branch);
+  RUN_TEST(the_checksum_row_ignores_the_jump);
+  RUN_TEST(names_the_group_boundary);
   return UNITY_END();
 }

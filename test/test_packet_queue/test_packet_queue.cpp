@@ -5,9 +5,12 @@
 void setUp(void) {}
 void tearDown(void) {}
 
+// Byte 0 is the key, which v2Build pins to 0x00 on every real packet, so a test that only
+// reads out[0] would pass even if the queue copied a single byte.
 static void fill(uint8_t *packet, uint8_t marker) {
-  for (uint8_t i = 0; i < V2_PACKET_LEN; i++) {
-    packet[i] = marker;
+  packet[0] = 0x00;
+  for (uint8_t i = 1; i < V2_PACKET_LEN; i++) {
+    packet[i] = (uint8_t)(marker + i);
   }
 }
 
@@ -30,7 +33,9 @@ static void holds_several_commands_in_order(void) {
   uint8_t out[V2_PACKET_LEN];
   for (uint8_t i = 1; i <= 3; i++) {
     TEST_ASSERT_TRUE(queue.pop(out));
-    TEST_ASSERT_EQUAL_UINT8(i, out[0]);
+    uint8_t want[V2_PACKET_LEN];
+    fill(want, i);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(want, out, V2_PACKET_LEN);
   }
   TEST_ASSERT_FALSE(queue.pop(out));
 }
@@ -45,15 +50,17 @@ static void overflow_drops_the_oldest(void) {
     queue.push(packet);
   }
 
-  uint8_t out[V2_PACKET_LEN];
+  uint8_t out[V2_PACKET_LEN], want[V2_PACKET_LEN];
   TEST_ASSERT_TRUE(queue.pop(out));
-  TEST_ASSERT_EQUAL_UINT8(3, out[0]);   // 1 and 2 were pushed out
+  fill(want, 3);
+  TEST_ASSERT_EQUAL_HEX8_ARRAY(want, out, V2_PACKET_LEN);   // 1 and 2 were pushed out
 
-  uint8_t last = 0;
+  // Counting the survivors catches an overflow branch that evicts more than one.
+  uint8_t drained = 1;
   while (queue.pop(out)) {
-    last = out[0];
+    drained++;
   }
-  TEST_ASSERT_EQUAL_UINT8(PACKET_QUEUE_LEN + 2, last);
+  TEST_ASSERT_EQUAL_UINT8(PACKET_QUEUE_LEN, drained);
 }
 
 // Indices wrap, so the queue has to keep working long after the buffer has been lapped.
@@ -66,7 +73,7 @@ static void survives_wrapping(void) {
     fill(packet, round);
     queue.push(packet);
     TEST_ASSERT_TRUE(queue.pop(out));
-    TEST_ASSERT_EQUAL_UINT8(round, out[0]);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(packet, out, V2_PACKET_LEN);
   }
   TEST_ASSERT_FALSE(queue.pop(out));
 }

@@ -82,6 +82,9 @@ static void drops_the_oldest_when_full(void) {
   TEST_ASSERT_NOT_NULL(strstr(rendered(log, 0), "line5"));
 }
 
+// Asserting only that the output fits is something snprintf guarantees regardless — an
+// unterminated store would walk into the neighbouring fields and still pass. Pin the
+// exact truncated text.
 static void truncates_long_messages(void) {
   LogBuffer log;
   char huge[LOG_LINE_LEN * 2];
@@ -89,9 +92,34 @@ static void truncates_long_messages(void) {
   huge[sizeof(huge) - 1] = '\0';
   log.push(0, huge);
 
+  char expected[LOG_LINE_LEN + 24];
+  memset(expected, 'x', sizeof(expected));
+  memcpy(expected, "[00:00:00] ", 11);
+  expected[11 + LOG_LINE_LEN - 1] = '\0';
+
   char out[LOG_LINE_LEN + 24];
   log.render(0, out, sizeof(out));
-  TEST_ASSERT_TRUE(strlen(out) < sizeof(out));
+  TEST_ASSERT_EQUAL_STRING(expected, out);
+  TEST_ASSERT_EQUAL_UINT(11 + LOG_LINE_LEN - 1, strlen(out));
+}
+
+// B8: every message differed in its first few characters, so a narrowed comparison would
+// have passed while collapsing unrelated lines that share a subsystem prefix.
+static void collapse_compares_the_whole_message(void) {
+  LogBuffer log;
+  log.push(0, "radio     : queue full, oldest dropped");
+  log.push(1, "radio     : queue full, newest dropped");
+  TEST_ASSERT_EQUAL_UINT8(2, log.count());
+}
+
+static void the_repeat_counter_saturates(void) {
+  LogBuffer log;
+  for (uint32_t i = 0; i < 70000; i++) {
+    log.push(i, "same");
+  }
+  char out[LOG_LINE_LEN + 24];
+  log.render(0, out, sizeof(out));
+  TEST_ASSERT_NOT_NULL(strstr(out, "(x65535)"));
 }
 
 static void out_of_range_is_empty(void) {
@@ -111,6 +139,8 @@ int main(void) {
   RUN_TEST(repeat_shows_the_most_recent_time);
   RUN_TEST(drops_the_oldest_when_full);
   RUN_TEST(truncates_long_messages);
+  RUN_TEST(collapse_compares_the_whole_message);
+  RUN_TEST(the_repeat_counter_saturates);
   RUN_TEST(out_of_range_is_empty);
   return UNITY_END();
 }

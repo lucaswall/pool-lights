@@ -29,12 +29,11 @@ class PL1167 {
 
  private:
   bool configure();
-  uint8_t readFrame();
 
   RF24 &_radio;
   const uint8_t *_syncword = nullptr;
   uint8_t _payloadLength = 0;
   uint8_t _frameLength = 0;
   uint8_t _channel = 0xff;
-  uint8_t _frame[32] = {0};
+  uint8_t _frame[32] = {0};   // sized reference for the read buffer
 };
