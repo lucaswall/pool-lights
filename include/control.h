@@ -2,6 +2,7 @@
 
 #include "encoder.h"
 #include "packet.h"
+#include "receive_stats.h"
 #include "state.h"
 
 // Where commands go. RadioLink implements it on hardware; tests inject a fake, which is
@@ -43,10 +44,14 @@ class Control {
     if (packet.deviceId != _encoder.deviceId() || packet.group != _encoder.group()) {
       return;
     }
+    // Scored only for traffic we accepted, so another device's sequence cannot pollute it.
+    _received.observe(packet.sequence);
     _state.apply(packet);
   }
 
   void tick(uint32_t nowMs) { _state.tick(nowMs); }
+
+  const ReceiveStats &received() const { return _received; }
 
   LightState &state() { return _state; }
   const LightState &state() const { return _state; }
@@ -71,4 +76,5 @@ class Control {
   PacketSink &_sink;
   Encoder _encoder;
   LightState _state;
+  ReceiveStats _received;
 };

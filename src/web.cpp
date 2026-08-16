@@ -95,6 +95,17 @@ void WebUi::handleStatus() {
   const uint32_t up = millis() / 1000;
   const char *mode = s.mode() == COLOUR_MODE_RGB ? "rgb" : "white";
 
+  // Silent until the remote has actually been used — which is indistinguishable from
+  // perfect, so say so rather than printing 100%.
+  const ReceiveStats &rx = _control.received();
+  char heardSummary[64];
+  if (rx.hasData()) {
+    snprintf(heardSummary, sizeof(heardSummary), "%u%% of presses heard (%u of %u)",
+             rx.capturePercent(), rx.heard(), rx.heard() + rx.missed());
+  } else {
+    snprintf(heardSummary, sizeof(heardSummary), "no presses observed yet");
+  }
+
   char body[640];
   if (_server.hasArg("json")) {
     // No escaping: every string here is a build stamp, a hostname, an IP or one of a
@@ -105,13 +116,16 @@ void WebUi::handleStatus() {
              "\"wifi\":{\"up\":%s,\"ip\":\"%s\",\"rssi\":%d},"
              "\"light\":{\"on\":%s,\"night\":%s,\"brightness\":%u,\"mode\":\"%s\","
              "\"hue\":%u,\"saturation\":%u,\"kelvin\":%u,\"effect\":%u},"
-             "\"log\":{\"lines\":%u,\"capacity\":%u,\"faults\":%u}}",
+             "\"log\":{\"lines\":%u,\"capacity\":%u,\"faults\":%u},"
+             "\"remote\":{\"observed\":%s,\"heard\":%u,\"missed\":%u,\"percent\":%u}}",
              _hostname, __DATE__, __TIME__, ESP.getResetReason().c_str(),
              (unsigned long)up, ESP.getFreeHeap(),
              _net.connected() ? "true" : "false", WiFi.localIP().toString().c_str(),
              _net.rssi(), s.on() ? "true" : "false", s.night() ? "true" : "false",
              s.brightness(), mode, s.hue(), s.saturation(), s.kelvin(), s.effect(),
-             logBuffer().count(), LOG_LINES, errorBuffer().count());
+             logBuffer().count(), LOG_LINES, errorBuffer().count(),
+             rx.hasData() ? "true" : "false", rx.heard(), rx.missed(),
+             rx.capturePercent());
 
     _server.sendHeader("Cache-Control", "no-store");
     _server.send(200, "application/json", body);
@@ -126,14 +140,15 @@ void WebUi::handleStatus() {
            "heap    : %u free\n"
            "wifi    : %s  ip %s  rssi %d dBm\n"
            "light   : %s%s  bright %u  %s  hue %u  sat %u  kelvin %u  effect %u\n"
-           "log     : %u of %u lines, %u faults\n",
+           "log     : %u of %u lines, %u faults\n"
+           "remote  : %s\n",
            _hostname, __DATE__, __TIME__, ESP.getResetReason().c_str(),
            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60),
            (unsigned long)(up % 60), ESP.getFreeHeap(),
            _net.connected() ? "up" : "down", WiFi.localIP().toString().c_str(), _net.rssi(),
            s.on() ? "on" : "off", s.night() ? " (night)" : "", s.brightness(), mode,
            s.hue(), s.saturation(), s.kelvin(), s.effect(),
-           logBuffer().count(), LOG_LINES, errorBuffer().count());
+           logBuffer().count(), LOG_LINES, errorBuffer().count(), heardSummary);
 
   _server.sendHeader("Cache-Control", "no-store");
   _server.send(200, "text/plain", body);

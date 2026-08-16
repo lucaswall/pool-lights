@@ -84,7 +84,7 @@ Everything the board serves, on port 80.
 | `GET /` | The web UI: state, controls, and a live console panel |
 | `GET /api/state` | State as JSON, plus IP, RSSI, uptime and heap. Polled twice a second by the page |
 | `POST /api/set` | Commands. Every parameter is optional and applied if present: `on=1`, `off=1`, `white=1`, `hue=0..255`, `brightness=0..100`, `sat=0..100`, `effect=0..4` |
-| `GET /status` | Snapshot: build stamp, reset reason, uptime, heap, WiFi, light state, and how full both rings are. Plain text, or JSON with `?json=1` |
+| `GET /status` | Snapshot: build stamp, reset reason, uptime, heap, WiFi, light state, how full both rings are, and how much of the remote's traffic is being heard. Plain text, or JSON with `?json=1` |
 | `GET /log` | The console ring as plain text, oldest first |
 | `GET /errors` | Faults only, from a separate smaller ring |
 
@@ -113,6 +113,22 @@ connects, publishes happily, and no entity ever appears.
 | `<prefix>effect/slower` | in — button press |
 | `<discovery>light/pool_lights/config` | out — discovery, retained |
 | `<discovery>button/pool_lights_{faster,slower}/config` | out — discovery, retained |
+
+### How much of the remote is being heard
+
+The remote advances a sequence byte once per press, so gaps in what we received are
+presses that happened and we missed. `/status` reports that as a percentage over roughly
+the last 64 transitions, weighted to recent behaviour so a bad hour is not diluted by a
+good week.
+
+Two things it is not. It measures what reaches *us*; whether our own transmissions reach
+the light is unobservable, because the protocol is one-way — reception is a proxy for it,
+not a measurement of it. And it is silent when nobody touches the remote, which looks
+exactly like perfect, so it says "no presses observed yet" rather than 100%. Gaps larger
+than a few presses are treated as a separate session rather than a fault, since the remote
+gets used while the bridge is rebooting.
+
+Consult it when something seems wrong. It is not an alarm.
 
 ### The two rings
 
