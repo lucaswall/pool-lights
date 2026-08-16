@@ -194,9 +194,19 @@ void HaMqtt::onMessage(const char *topic, const uint8_t *payload, unsigned int l
     return;
   }
 
-  // Order matters: colour and brightness before the power command, so a "turn on at this
-  // colour" request does not arrive as on-then-change and visibly step through the old
-  // colour first.
+  // Order matters, and it depends on whether the light is already on. The receiver
+  // discards colour and brightness sent to a light that is off, and then ON restores
+  // whatever it last held — so "turn on blue" from off used to come up in the previous
+  // colour, and only a second identical command took effect.
+  //
+  // Waking it first costs a brief flash of the old colour. Sending attributes first when
+  // it is already on avoids that flash, and is safe because they land.
+  const bool wantOn = doc["state"].is<const char *>() && strcmp(doc["state"], "ON") == 0;
+  const bool wokeIt = wantOn && !_control.state().on();
+  if (wokeIt) {
+    _control.turnOn();
+  }
+
   if (doc["color"].is<JsonObject>()) {
     const uint8_t r = doc["color"]["r"], g = doc["color"]["g"], b = doc["color"]["b"];
     // Every grey has hue 0, which is red. A near-white request belongs on the white
@@ -218,10 +228,10 @@ void HaMqtt::onMessage(const char *topic, const uint8_t *payload, unsigned int l
     _control.setEffect((uint8_t)atoi(doc["effect"]));
   }
   if (doc["state"].is<const char *>()) {
-    if (strcmp(doc["state"], "ON") == 0) {
-      _control.turnOn();
-    } else {
+    if (!wantOn) {
       _control.turnOff();
+    } else if (!wokeIt) {
+      _control.turnOn();   // already on: the attributes landed, confirm the power state
     }
   }
 }

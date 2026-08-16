@@ -6,11 +6,15 @@ over MQTT. See `README.md` for what it does, `docs/hardware.md` for wiring and
 
 ---
 
-## RULE 0 — THIS REPOSITORY WILL BE PUBLIC
+## RULE 0 — THIS REPOSITORY IS PUBLIC
 
-It is private today and will be published later. Write every file as if it were already
-public. This rule outranks convenience, and it applies to code, comments, commit messages,
-docs, and issue text.
+Everything here is world-readable, including the full commit history, and a value pushed
+once cannot be recalled — it can be cloned before it is removed. This rule outranks
+convenience, and it applies to code, comments, commit messages, docs, and issue text.
+
+It governs the repository. It says nothing about what the device serves on its own
+network: the web UI reporting the light's identity to a browser on the LAN is not a
+RULE 0 matter.
 
 **Never commit, in any file or commit message:**
 
@@ -35,7 +39,8 @@ committed carrying placeholders only.
 
 **Before every commit:** if a value came from the real installation rather than from a
 datasheet, it belongs in `local/`, not in the tree. When in doubt, leave it out and put a
-placeholder.
+placeholder. `make check` catches the common shapes; it cannot catch everything, so read
+your own diff.
 
 **Keep the docs generic.** This targets Home Assistant, not one particular Home Assistant.
 Write "your broker", "your HA instance", "the hub's IP" — never the real ones. A reader
